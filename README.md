@@ -48,4 +48,6 @@ A project integrating Aruco markers, OGRE 3D engine and Oculus Rift with OpenCV 
 
 # Notes #
 
-The makefile inside 'Debug' should work already, if everything has been setup properly. The include paths are different obviously.
+The Debug folder has been pushed for demonstration purposes of the makefile.
+
+The project has been setup using Eclipse, the guidelines above match exactly the steps required for compiling the project there.
