@@ -1,4 +1,4 @@
-# README #
+# Readme #
 
 A project integrating Aruco markers, OGRE 3D engine and Oculus Rift with OpenCV for Augment Reality.
 
@@ -8,7 +8,7 @@ A project integrating Aruco markers, OGRE 3D engine and Oculus Rift with OpenCV 
 - OpenCV 2.4.10
 - Aruco (http://sourceforge.net/projects/aruco/)
 
-# QUICK GETTING COMPILED #
+# Quick Getting Compiled #
 
 ** Include paths (-I):** 
 
@@ -45,3 +45,7 @@ A project integrating Aruco markers, OGRE 3D engine and Oculus Rift with OpenCV 
 **Library Search Path (-L):**
 
 {path_to_opencv_installation}/lib
+
+# Notes #
+
+The makefile inside 'Debug' should work already, if everything has been setup properly. The include paths are different obviously.
