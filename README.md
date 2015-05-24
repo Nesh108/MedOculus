@@ -2,6 +2,12 @@
 
 A project integrating Aruco markers, OGRE 3D engine and Oculus Rift with OpenCV for Augment Reality.
 
+# Requirements #
+
+- OGRE 1.9.0
+- OpenCV 2.4.10
+- Aruco (http://sourceforge.net/projects/aruco/)
+
 # QUICK GETTING COMPILED #
 
 ** Include paths (-I):** 
