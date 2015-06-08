@@ -1,10 +1,10 @@
 #include "App.h"
 
 bool FULL_SCREEN = false;
-/*int HEIGHT = 1080;
-int WIDTH = 1920;*/
-int HEIGHT = 600;
-int WIDTH = 800;
+int HEIGHT = 1080;
+int WIDTH = 1920;
+/*int HEIGHT = 600;
+int WIDTH = 800;*/
 
 App::App()
 {
@@ -12,7 +12,7 @@ App::App()
 
 	mRoot = NULL;
 	mKeyboard = NULL;
-	mMouse = NULL;	
+	mMouse = NULL;
 	mScene = NULL;
 	mShutdown = false;
 	mWindow = NULL;
@@ -64,10 +64,10 @@ void App::initOgre()
 	// Load up resources according to resources.cfg:
 	Ogre::ConfigFile cf;
     cf.load("resources.cfg");
- 
+
     // Go through all sections & settings in the file
     Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
- 
+
     Ogre::String secName, typeName, archName;
     while (seci.hasMoreElements())
     {
@@ -103,7 +103,7 @@ void App::initOgre()
 	else
 		miscParams["monitorIndex"] = Ogre::StringConverter::toString(1);
 	miscParams["border "] = "none";
-	
+
 	Ogre::NameValuePairList miscParamsSmall;
 	miscParamsSmall["monitorIndex"] = Ogre::StringConverter::toString(0);
 
@@ -114,7 +114,7 @@ void App::initOgre()
 		mWindow = mRoot->createRenderWindow("Oculus Rift Liver Visualization", HEIGHT, WIDTH, FULL_SCREEN, &miscParams);
 
 	if( DEBUG_WINDOW )
-		mSmallWindow = mRoot->createRenderWindow("DEBUG Oculus Rift Liver Visualization", 1920*debugWindowSize, 1080*debugWindowSize, false, &miscParamsSmall);   
+		mSmallWindow = mRoot->createRenderWindow("DEBUG Oculus Rift Liver Visualization", 1920*debugWindowSize, 1080*debugWindowSize, false, &miscParamsSmall);
 
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
 }
@@ -134,7 +134,7 @@ void App::initOIS()
 	OIS::ParamList pl;
     size_t windowHnd = 0;
     std::ostringstream windowHndStr;
- 
+
     //tell OIS about the Ogre window
     mWindow->getCustomAttribute("WINDOW", &windowHnd);
     windowHndStr << windowHnd;
@@ -144,7 +144,7 @@ void App::initOIS()
     OIS::InputManager* inputManager = OIS::InputManager::createInputSystem(pl);
     mKeyboard = static_cast<OIS::Keyboard*>(inputManager->createInputObject(OIS::OISKeyboard, true));
     mMouse = static_cast<OIS::Mouse*>(inputManager->createInputObject(OIS::OISMouse, true));
- 
+
     //tell OIS about the window's dimensions
     unsigned int width, height, depth;
     int top, left;
@@ -207,7 +207,7 @@ void App::createViewports()
 			mViewportR = mWindow->addViewport(mScene->getRightCamera(), 1, 0.5, 0.0, 0.5, 1.0 );
 			mViewportR->setBackgroundColour(Ogre::ColourValue(0.15,0.15,0.15));
 		}
-		
+
 		/*if( !ROTATE_VIEW )
 		{
 			mScene->getLeftCamera()->setAspectRatio( 0.5*mWindow->getWidth()/mWindow->getHeight() );
@@ -228,7 +228,7 @@ void App::createViewports()
 	}
 }
 
-bool App::frameRenderingQueued(const Ogre::FrameEvent& evt) 
+bool App::frameRenderingQueued(const Ogre::FrameEvent& evt)
 {
 	if (mShutdown) return false;
 
@@ -249,11 +249,11 @@ bool App::frameRenderingQueued(const Ogre::FrameEvent& evt)
 
 	mScene->update( evt.timeSinceLastFrame );
 
-	//exit if key ESCAPE pressed 
-	if(mKeyboard->isKeyDown(OIS::KC_ESCAPE)) 
+	//exit if key ESCAPE pressed
+	if(mKeyboard->isKeyDown(OIS::KC_ESCAPE))
 		return false;
 
-	return true; 
+	return true;
 }
 
 //////////////////////////////////////////////////////////////////////////

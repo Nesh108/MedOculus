@@ -2,7 +2,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <aruco/aruco.h>
+#include <aruco.h>
 
 #include "Ogre.h"
 #include <OIS/OIS.h>
