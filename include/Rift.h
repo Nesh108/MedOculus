@@ -25,6 +25,13 @@
 #include "OGRE/OgreSingleton.h"
 using namespace OVR;
 
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <aruco.h>
+
+
 class Rift : public Ogre::Singleton<Rift>
 {
 	public:
@@ -72,7 +79,7 @@ class Rift : public Ogre::Singleton<Rift>
 
 		//! Use to set a custom texture (for example: loading screen/menu etc) on the rift.
 		/*! Pass the name of an already loaded texture.*/
-		void setTexture( std::string tex );
+		//void setTexture( std::string tex );
 
 		//! Find out if this is a dummy rift only.
 		/*! This will return to true if Rift wasn't found at startup.
@@ -86,6 +93,8 @@ class Rift : public Ogre::Singleton<Rift>
 
 
 	private:
+
+		void createVideoStreams();
 
 		ovrHmd hmd;
 		ovrFrameTiming frameTiming;

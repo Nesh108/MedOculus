@@ -30,10 +30,14 @@ material Oculus/LeftEye
 
 			fragment_program_ref OculusDistortionFragment
 			{
-				param_named diffuseMap int 0
+				param_named videoStream int 0
+				param_named diffuseMap int 1
 			}
 
             lighting off
+			texture_unit
+            {
+            }
 			texture_unit
             {
             }
@@ -55,12 +59,16 @@ material Oculus/RightEye
 
 			fragment_program_ref OculusDistortionFragment
 			{
-				param_named diffuseMap int 0
+				param_named videoStream int 0
+				param_named diffuseMap int 1
 			}
 
             lighting off
 
-			texture_unit 
+			texture_unit
+            {
+            }
+			texture_unit
             {
             }
         }

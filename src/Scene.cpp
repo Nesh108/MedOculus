@@ -1,32 +1,14 @@
 #include "Scene.h"
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <aruco.h>
 
 #include "Ogre.h"
 #include <OIS/OIS.h>
 
-cv::VideoCapture TheVideoCapturer_left;
-cv::Mat TheInputImage_left, TheInputImageUnd_left;
-
-Ogre::PixelBox mPixelBox_left;
-Ogre::TexturePtr mTexture_left;
-aruco::CameraParameters CameraParams_left, CameraParamsUnd_left;
-
-float TheMarkerSize = 0.025;
-
+/*float TheMarkerSize = 0.025;
 aruco::MarkerDetector TheMarkerDetector;
-std::vector<aruco::Marker> TheMarkers;
+std::vector<aruco::Marker> TheMarkers;*/
 
 Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard)
 {
-
-	TheVideoCapturer_left.open(0);
-
-	CameraParams_left.readFromXMLFile("internal_camera.yml");
-	CameraParamsUnd_left = CameraParams_left;
-	CameraParamsUnd_left.Distorsion = cv::Mat::zeros(4, 1, CV_32F);
 
 	mRoot = root;
 	mMouse = mouse;
@@ -39,7 +21,7 @@ Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard)
 
 	//mSceneMgr->setShadowFarDistance( 30 );
 
-	//createRoom();
+	createRoom();
 	createCameras();
 }
 
@@ -47,80 +29,106 @@ Scene::~Scene()
 {
 	if (mSceneMgr) delete mSceneMgr;
 }
-/*
+
+
 void Scene::createRoom()
 {
+	mRoomNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("RoomNode");
 
-	TheVideoCapturer.grab();
-	TheVideoCapturer.retrieve(TheInputImage);
-	cv::undistort(TheInputImage, TheInputImageUnd,
-			CameraParams.CameraMatrix, CameraParams.Distorsion);
+	Ogre::SceneNode* cubeNode = mRoomNode->createChildSceneNode();
+	Ogre::Entity* cubeEnt = mSceneMgr->createEntity( "Cube.mesh" );
+	cubeEnt->getSubEntity(0)->setMaterialName( "CubeMaterialRed" );
+	cubeNode->attachObject( cubeEnt );
+	cubeNode->setPosition( 1.0, 0.0, 0.0 );
+	Ogre::SceneNode* cubeNode2 = mRoomNode->createChildSceneNode();
+	Ogre::Entity* cubeEnt2 = mSceneMgr->createEntity( "Cube.mesh" );
+	cubeEnt2->getSubEntity(0)->setMaterialName( "CubeMaterialGreen" );
+	cubeNode2->attachObject( cubeEnt2 );
+	cubeNode2->setPosition( 3.0, 0.0, 0.0 );
+	cubeNode->setScale( 0.5, 0.5, 0.5 );
+	cubeNode2->setScale( 0.5, 0.5, 0.5 );
 
-	//mRoomNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("RoomNode");
+	Ogre::SceneNode* cubeNode3 = mRoomNode->createChildSceneNode();
+	Ogre::Entity* cubeEnt3 = mSceneMgr->createEntity( "Cube.mesh" );
+	cubeEnt3->getSubEntity(0)->setMaterialName( "CubeMaterialWhite" );
+	cubeNode3->attachObject( cubeEnt3 );
+	cubeNode3->setPosition( -1.0, 0.0, 0.0 );
+	cubeNode3->setScale( 0.5, 0.5, 0.5 );
 
-	Ogre::Camera *camera;
-	Ogre::SceneNode* cameraNode;
-	camera = mSceneMgr->createCamera("camera");
-	camera->setNearClipDistance(0.01f);
-	camera->setFarClipDistance(10.0f);
-	camera->setProjectionType(Ogre::PT_ORTHOGRAPHIC);
-	camera->setPosition(0, 0, 0);
-	camera->lookAt(0, 0, 1);
-	double pMatrix[16];
-	CameraParamsUnd.OgreGetProjectionMatrix(CameraParamsUnd.CamSize, CameraParamsUnd.CamSize,
-			pMatrix, 0.05, 10, false);
-	Ogre::Matrix4 PM(pMatrix[0], pMatrix[1], pMatrix[2], pMatrix[3], pMatrix[4],
-			pMatrix[5], pMatrix[6], pMatrix[7], pMatrix[8], pMatrix[9],
-			pMatrix[10], pMatrix[11], pMatrix[12], pMatrix[13], pMatrix[14],
-			pMatrix[15]);
-	camera->setCustomProjectionMatrix(true, PM);
-	camera->setCustomViewMatrix(true, Ogre::Matrix4::IDENTITY);
-	cameraNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("cameraNode");
-	cameraNode->attachObject(camera);
+	/*Ogre::Entity* roomEnt = mSceneMgr->createEntity( "Room.mesh" );
+	roomEnt->setCastShadows( false );
+	mRoomNode->attachObject( roomEnt );*/
 
-	/// CREATE BACKGROUND FROM CAMERA IMAGE
-	int width = CameraParamsUnd.CamSize.width;
-	int height = CameraParamsUnd.CamSize.height;
-	// create background camera image
-	mPixelBox = Ogre::PixelBox(width, height, 1, Ogre::PF_R8G8B8, TheInputImageUnd.ptr<uchar>(0));
-	// Create Texture
-	mTexture = Ogre::TextureManager::getSingleton().createManual(
-			"CameraTexture",
-			Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-			Ogre::TEX_TYPE_2D, width, height, 0, Ogre::PF_R8G8B8,
-			Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);
+	Ogre::Light* roomLight = mSceneMgr->createLight();
+	roomLight->setType(Ogre::Light::LT_POINT);
+	roomLight->setCastShadows( true );
+	roomLight->setShadowFarDistance( 30 );
+	roomLight->setAttenuation( 65, 1.0, 0.07, 0.017 );
+	roomLight->setSpecularColour( .25, .25, .25 );
+	roomLight->setDiffuseColour( 0.85, 0.76, 0.7 );
 
-	//Create Camera Material
-	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().create(
-			"CameraMaterial",
-			Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-	Ogre::Technique *technique = material->createTechnique();
-	technique->createPass();
-	material->getTechnique(0)->getPass(0)->setLightingEnabled(false);
-	material->getTechnique(0)->getPass(0)->setDepthWriteEnabled(false);
-	material->getTechnique(0)->getPass(0)->createTextureUnitState(
-			"CameraTexture");
+	roomLight->setPosition( 5, 5, 5 );
 
-	Ogre::Rectangle2D* rect = new Ogre::Rectangle2D(true);
-	rect->setCorners(-1.0, 1.0, 1.0, -1.0);
-	rect->setMaterial("CameraMaterial");
-
-	// Render the background before everything else
-	rect->setRenderQueueGroup(Ogre::RENDER_QUEUE_BACKGROUND);
-
-	// Hacky, but we need to set the bounding box to something big, use infinite AAB to always stay visible
-	Ogre::AxisAlignedBox aabInf;
-	aabInf.setInfinite();
-	rect->setBoundingBox(aabInf);
-
-	// Attach background to the scene
-	Ogre::SceneNode* cameraLeft = mSceneMgr->getRootSceneNode()->createChildSceneNode(
-			"CameraLeft");
-	cameraLeft->attachObject(rect);
-}*/
-
+	mRoomNode->attachObject( roomLight );
+}
 
 void Scene::createCameras()
+{
+	mCamLeft = mSceneMgr->createCamera("LeftCamera");
+	mCamRight = mSceneMgr->createCamera("RightCamera");
+
+	// Create a scene nodes which the cams will be attached to:
+	mBodyNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("BodyNode");
+	mBodyTiltNode = mBodyNode->createChildSceneNode();
+	mHeadNode = mBodyTiltNode->createChildSceneNode("HeadNode");
+	mBodyNode->setFixedYawAxis( true );	// don't roll!
+
+	mHeadNode->attachObject(mCamLeft);
+	mHeadNode->attachObject(mCamRight);
+
+	// Position cameras according to interpupillary distance
+	float dist = 0.05;
+	/*if (mRift->isAttached())
+	{
+		dist = mRift->getStereoConfig().GetIPD();
+	}*/
+	mCamLeft->setPosition( -dist/2.0f, 0.0f, 0.0f );
+	mCamRight->setPosition( dist/2.0f, 0.0f, 0.0f );
+
+	// If possible, get the camera projection matricies given by the rift:
+	/*if (mRift->isAttached())
+	{
+		mCamLeft->setCustomProjectionMatrix( true, mRift->getProjectionMatrix_Left() );
+		mCamRight->setCustomProjectionMatrix( true, mRift->getProjectionMatrix_Right() );
+	}*/
+	mCamLeft->setFarClipDistance( 50 );
+	mCamRight->setFarClipDistance( 50 );
+
+	mCamLeft->setNearClipDistance( 0.001 );
+	mCamRight->setNearClipDistance( 0.001 );
+
+	/*mHeadLight = mSceneMgr->createLight();
+	mHeadLight->setType(Ogre::Light::LT_POINT);
+	mHeadLight->setCastShadows( true );
+	mHeadLight->setShadowFarDistance( 30 );
+	mHeadLight->setAttenuation( 65, 1.0, 0.07, 0.017 );
+	mHeadLight->setSpecularColour( 1.0, 1.0, 1.0 );
+	mHeadLight->setDiffuseColour( 1.0, 1.0, 1.0 );
+	mHeadNode->attachObject( mHeadLight );*/
+
+	mBodyNode->setPosition( 4.0, 1.5, 4.0 );
+	//mBodyNode->lookAt( Ogre::Vector3::ZERO, Ogre::SceneNode::TS_WORLD );
+
+	Ogre::Light* light = mSceneMgr->createLight();
+	light->setType(Ogre::Light::LT_POINT);
+	light->setCastShadows( false );
+	light->setAttenuation( 65, 1.0, 0.07, 0.017 );
+	light->setSpecularColour( .25, .25, .25 );
+	light->setDiffuseColour( 0.35, 0.27, 0.23 );
+	mBodyNode->attachObject(light);
+}
+
+/*void Scene::createCameras()
 {
 	// Left Camera
 	TheVideoCapturer_left.grab();
@@ -185,7 +193,7 @@ void Scene::createCameras()
 	cameraLeft->attachObject(rect_left);
 
 	////////////////////////////////
-	//mCamLeft = mSceneMgr->createCamera("LeftCamera");
+	mCamLeft = mSceneMgr->createCamera("LeftCamera");
 	mCamRight = mSceneMgr->createCamera("RightCamera");
 
 	// Create a scene nodes which the cams will be attached to:
@@ -199,10 +207,7 @@ void Scene::createCameras()
 
 	// Position cameras according to interpupillary distance
 	float dist = 0.05;
-	/*if (mRift->isAttached())
-	{
-		dist = mRift->getStereoConfig().GetIPD();
-	}*/
+
 	mCamLeft->setPosition( -dist/2.0f, 0.0f, 0.0f );
 	mCamRight->setPosition( dist/2.0f, 0.0f, 0.0f );
 
@@ -223,7 +228,7 @@ void Scene::createCameras()
 	light->setSpecularColour( .25, .25, .25 );
 	light->setDiffuseColour( 0.35, 0.27, 0.23 );
 	mBodyNode->attachObject(light);
-}
+}*/
 
 void Scene::update( float dt )
 {
@@ -236,24 +241,7 @@ void Scene::update( float dt )
 		leftRight *= 3;
 	}
 
-	// Updating Left Eye
-	TheVideoCapturer_left.grab();
-	TheVideoCapturer_left.retrieve(TheInputImage_left);
-	cv::undistort(TheInputImage_left, TheInputImageUnd_left,
-			CameraParams_left.CameraMatrix, CameraParams_left.Distorsion);
-
-	/// DETECT MARKERS
-	TheMarkerDetector.detect(TheInputImageUnd_left, TheMarkers, CameraParamsUnd_left,
-		TheMarkerSize);
-
-	for (uint i = 0; i < TheMarkers.size(); i++)
-		TheMarkers[i].draw(TheInputImageUnd_left, cv::Scalar(0, 0, 255), 1);
-
-	mTexture_left->getBuffer()->blitFromMemory(mPixelBox_left);
-
-	// Updating Right Eye
-
-	Ogre::WindowEventUtilities::messagePump();
+		//Ogre::WindowEventUtilities::messagePump();
 
 	Ogre::Vector3 dirX = mBodyTiltNode->_getDerivedOrientation()*Ogre::Vector3::UNIT_X;
 	Ogre::Vector3 dirZ = mBodyTiltNode->_getDerivedOrientation()*Ogre::Vector3::UNIT_Z;

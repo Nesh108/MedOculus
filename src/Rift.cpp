@@ -1,9 +1,20 @@
 #include "Rift.h"
 
+
 // Needed by Ogre::Singleton:
 template<> Rift* Ogre::Singleton<Rift>::msSingleton = 0;
 
 bool Rift::isInitialized = false;
+
+
+// TODO: Make these member variables of the Rift class:
+cv::VideoCapture TheVideoCapturer_left;
+cv::Mat TheInputImage_left, TheInputImageUnd_left;
+
+Ogre::PixelBox mPixelBox_left;
+Ogre::TexturePtr mTexture_left;
+aruco::CameraParameters CameraParams_left, CameraParamsUnd_left;
+
 
 //////////////////////////////////////////
 // Static members for handling the API:
@@ -97,10 +108,10 @@ Rift::Rift( int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow, bool rot
 
 		// Assign the textures to the eyes used later:
 		mMatLeft = Ogre::MaterialManager::getSingleton().getByName( "Oculus/LeftEye" );
-		mMatLeft->getTechnique(0)->getPass(0)->getTextureUnitState(0)->
+		mMatLeft->getTechnique(0)->getPass(0)->getTextureUnitState(1)->
 			setTexture( mLeftEyeRenderTexture );
 		mMatRight = Ogre::MaterialManager::getSingleton().getByName( "Oculus/RightEye" );
-		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(0)->
+		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(1)->
 			setTexture( mRightEyeRenderTexture );
 
 		ovrEyeRenderDesc eyeRenderDesc[2];
@@ -319,6 +330,11 @@ Rift::Rift( int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow, bool rot
 	mViewport->setOverlaysEnabled(true);
 
 	mPosition = Ogre::Vector3::ZERO;
+
+
+	///////////////////////////////////////
+	// Start streaming devices:
+	createVideoStreams();
 }
 
 Rift::~Rift()
@@ -411,6 +427,19 @@ void Rift::setCameras( Ogre::Camera* camLeft, Ogre::Camera* camRight )
 
 bool Rift::update( float dt )
 {
+
+
+
+    ///////////////////////////////////////////////////////////
+	// Update the Video streams:
+	// Updating Left Eye
+	TheVideoCapturer_left.grab();
+	TheVideoCapturer_left.retrieve(TheInputImage_left);
+	cv::undistort(TheInputImage_left, TheInputImageUnd_left,
+			CameraParams_left.CameraMatrix, CameraParams_left.Distorsion);
+
+	mTexture_left->getBuffer()->blitFromMemory(mPixelBox_left);
+
 	if( !hmd ) return true;
 
 	frameTiming = ovrHmd_BeginFrameTiming(hmd, 0);
@@ -460,6 +489,8 @@ bool Rift::update( float dt )
 
 	ovrHmd_EndFrameTiming(hmd);
 
+
+
 	return true;
 }
 
@@ -469,6 +500,7 @@ void Rift::recenterPose()
 		ovrHmd_RecenterPose( hmd );
 }
 
+/*
 void Rift::setTexture( std::string tex )
 {
 	if( tex.size() > 0 )
@@ -486,4 +518,38 @@ void Rift::setTexture( std::string tex )
 		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTexture( mRightEyeRenderTexture );
 	}
 }
+*/
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Handle video streams:
+
+void Rift::createVideoStreams()
+{
+	TheVideoCapturer_left.open(0);
+
+	CameraParams_left.readFromXMLFile("internal_camera.yml");
+	CameraParamsUnd_left = CameraParams_left;
+	CameraParamsUnd_left.Distorsion = cv::Mat::zeros(4, 1, CV_32F);
+
+    TheVideoCapturer_left.grab();
+	TheVideoCapturer_left.retrieve(TheInputImage_left);
+	cv::undistort(TheInputImage_left, TheInputImageUnd_left,
+			CameraParams_left.CameraMatrix, CameraParams_left.Distorsion);
+
+	double pMatrix[16];
+	CameraParamsUnd_left.OgreGetProjectionMatrix(CameraParamsUnd_left.CamSize, CameraParamsUnd_left.CamSize,
+			pMatrix, 0.05, 10, false);
+	int width = CameraParamsUnd_left.CamSize.width;
+	int height = CameraParamsUnd_left.CamSize.height;
+	mPixelBox_left = Ogre::PixelBox(width, height, 1, Ogre::PF_R8G8B8, TheInputImageUnd_left.ptr<uchar>(0));
+    mTexture_left = Ogre::TextureManager::getSingleton().createManual(
+			"CameraTexture_left",
+			Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+			Ogre::TEX_TYPE_2D, width, height, 0, Ogre::PF_R8G8B8,
+			Ogre::TU_DYNAMIC);
+
+	mMatLeft->getTechnique(0)->getPass(0)->getTextureUnitState(1)->setTexture( mTexture_left );
+	// TODO:
+	mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(1)->setTexture( mTexture_left );
+}
