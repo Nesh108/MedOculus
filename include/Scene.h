@@ -55,7 +55,7 @@ class Scene
 		Ogre::SceneNode* mBodyTiltNode;
 
 		Ogre::SceneNode* mRoomNode;
-		Ogre::SceneNode* mARONodes[20];
+		Ogre::SceneNode* mARONodes[3];
 
 		Rift* mRift;
 };

@@ -44,36 +44,67 @@ void Scene::loadARObjects()
 				"FileSystem", "Popular");
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
 
-	for (int i = 0; i < 20; i++) {
-		Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
-
-		Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
-				"Cube.mesh");
-		Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
-		mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
-		Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
-		ogreNodeChild->attachObject(ogreEntity);
-		ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
-				Ogre::Radian(Ogre::Degree(90)));
-		ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
+	for (int i = 0; i < 3; i++) {
 
 		// TODO: Read from external source
 		if(i == 0)
 		{
-			ARMarkersList[1009] = i;
-			ARMarkersState[1009] = false;
+			Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
 
-			mARONodes[i]->setScale(1, 1, 1);
+			Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
+					"Cube.mesh");
+			Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
+			mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
+			Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
+			ogreNodeChild->attachObject(ogreEntity);
+			ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
+					Ogre::Radian(Ogre::Degree(90)));
+			ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
+
+			ARMarkersList[1009] = i;
+
+			float scale = 0.01;
+			mARONodes[i]->setScale(scale, scale, scale);
 		}
 		else if(i == 1)
 		{
-			ARMarkersList[724] = i;
-			ARMarkersState[724] = false;
+			Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
 
-			mARONodes[i]->setScale(0.01, 0.01, 0.01);
+			Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
+					"ninja.mesh");
+			Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
+			mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
+			Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
+			ogreNodeChild->attachObject(ogreEntity);
+			ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
+					Ogre::Radian(Ogre::Degree(90)));
+			ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
+
+			ARMarkersList[724] = i;
+
+			float scale = 0.00013675f;
+			mARONodes[i]->setScale(scale, scale, scale);
 		}
-		else
-			mARONodes[i]->setScale(0.5, 0.5, 0.5);
+		else if(i == 2)
+		{
+			Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
+
+			Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
+					"sphere.mesh");
+			Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
+			mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
+			Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
+			ogreNodeChild->attachObject(ogreEntity);
+			ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
+					Ogre::Radian(Ogre::Degree(90)));
+			ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
+
+			ARMarkersList[354] = i;
+
+			float scale = 0.0001075f;
+			mARONodes[i]->setScale(scale, scale, scale);
+		}
+
 
 	}
 	Ogre::Light* roomLight = mSceneMgr->createLight();
@@ -125,6 +156,35 @@ void Scene::createCameras()
 
 	mCamLeft->setNearClipDistance( 0.001 );
 	mCamRight->setNearClipDistance( 0.001 );
+
+	aruco::CameraParameters camParams_left;
+	camParams_left.readFromXMLFile("camera_left.yml");
+
+	double pMatrix[16];
+	camParams_left.OgreGetProjectionMatrix(camParams_left.CamSize, camParams_left.CamSize,
+				pMatrix, 0.05, 10, false);
+
+	Ogre::Matrix4 PM_left(pMatrix[0], pMatrix[1], pMatrix[2], pMatrix[3], pMatrix[4],
+			pMatrix[5], pMatrix[6], pMatrix[7], pMatrix[8], pMatrix[9],
+			pMatrix[10], pMatrix[11], pMatrix[12], pMatrix[13], pMatrix[14],
+			pMatrix[15]);
+	mCamLeft->setCustomProjectionMatrix(true, PM_left);
+	mCamLeft->setCustomViewMatrix(true, Ogre::Matrix4::IDENTITY);
+
+	///
+
+	aruco::CameraParameters camParams_right;
+	camParams_right.readFromXMLFile("camera_right.yml");
+
+	camParams_right.OgreGetProjectionMatrix(camParams_right.CamSize, camParams_right.CamSize,
+				pMatrix, 0.05, 10, false);
+
+	Ogre::Matrix4 PM_right(pMatrix[0], pMatrix[1], pMatrix[2], pMatrix[3], pMatrix[4],
+			pMatrix[5], pMatrix[6], pMatrix[7], pMatrix[8], pMatrix[9],
+			pMatrix[10], pMatrix[11], pMatrix[12], pMatrix[13], pMatrix[14],
+			pMatrix[15]);
+	mCamRight->setCustomProjectionMatrix(true, PM_right);
+	mCamRight->setCustomViewMatrix(true, Ogre::Matrix4::IDENTITY);
 
 	/*mHeadLight = mSceneMgr->createLight();
 	mHeadLight->setType(Ogre::Light::LT_POINT);
@@ -265,9 +325,12 @@ void Scene::update( float dt )
 
 	double markers_left[TheMarkers.size()];
 
+	// Clear marker state
+	for(map<int,bool>::iterator it = ARMarkersState.begin(); it != ARMarkersState.end(); ++it) {
+		it->second = false;
+	}
 	// show nodes for detected markers
 	for (i = 0; i < TheMarkers.size(); i++) {
-		ARMarkersState[TheMarkers[i].id] = false;
 		TheMarkers[i].OgreGetPoseParameters(position, orientation);
 
 		// TODO: add multiple ARObjects
@@ -292,12 +355,6 @@ void Scene::update( float dt )
 		markers_left[i] = position[2];
 
 	}
-
-	// Hide the other markers
-	/*for(map<int,bool>::iterator it = ARMarkersState.begin(); it != ARMarkersState.end(); ++it) {
-	  if(!it->second)
-		  mARONodes[ARMarkersList[it->first]]->setVisible(false);
-	}*/
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	/// Find closest ID
@@ -338,7 +395,6 @@ void Scene::update( float dt )
 
 		// show nodes for detected markers
 		for (i = 0; i < TheMarkers.size(); i++) {
-			ARMarkersState[TheMarkers[i].id] = false;
 			TheMarkers[i].OgreGetPoseParameters(position, orientation);
 
 			// TODO: add multiple ARObjects
@@ -364,12 +420,6 @@ void Scene::update( float dt )
 
 		}
 
-		// Hide the other markers
-		/*for(map<int,bool>::iterator it = ARMarkersState.begin(); it != ARMarkersState.end(); ++it) {
-		  if(!it->second)
-			  mARONodes[ARMarkersList[it->first]]->setVisible(false);
-		}*/
-
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Find closest ID
 		////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -394,6 +444,12 @@ void Scene::update( float dt )
 		mRift->setTextureRight(mRift->getPixelBoxRight());
 	}
 
+	// Hide the other markers
+	for(map<int,bool>::iterator it = ARMarkersState.begin(); it != ARMarkersState.end(); ++it) {
+	  if(!it->second)
+		  mARONodes[ARMarkersList[it->first]]->setVisible(false);
+
+	}
 
 	float forward = (mKeyboard->isKeyDown( OIS::KC_W ) ? 0 : 1) + (mKeyboard->isKeyDown( OIS::KC_S ) ? 0 : -1);
 	float leftRight = (mKeyboard->isKeyDown( OIS::KC_A ) ? 0 : 1) + (mKeyboard->isKeyDown( OIS::KC_D ) ? 0 : -1);

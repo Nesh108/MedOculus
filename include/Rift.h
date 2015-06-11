@@ -97,6 +97,8 @@ class Rift : public Ogre::Singleton<Rift>
 		aruco::CameraParameters getCameraParamsUndRight();
 		Ogre::PixelBox getPixelBoxLeft();
 		Ogre::PixelBox getPixelBoxRight();
+		aruco::CameraParameters getCameraParamsLeft();
+		aruco::CameraParameters getCameraParamsRight();
 
 	protected:
 

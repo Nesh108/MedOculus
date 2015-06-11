@@ -25,6 +25,7 @@ Ogre::TexturePtr mTexture_right;
 aruco::CameraParameters CameraParams_right, CameraParamsUnd_right;
 
 int cameraCount = 2;
+
 //////////////////////////////////////////
 // Static members for handling the API:
 //////////////////////////////////////////
@@ -647,6 +648,14 @@ aruco::CameraParameters Rift::getCameraParamsUndLeft(){
 
 aruco::CameraParameters Rift::getCameraParamsUndRight(){
 	return CameraParamsUnd_right;
+}
+
+aruco::CameraParameters Rift::getCameraParamsLeft(){
+	return CameraParams_left;
+}
+
+aruco::CameraParameters Rift::getCameraParamsRight(){
+	return CameraParams_right;
 }
 
 Ogre::PixelBox Rift::getPixelBoxLeft(){
