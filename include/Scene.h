@@ -4,16 +4,26 @@
 #include "OGRE/Ogre.h"
 #include "OIS/OIS.h"
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
+#include <aruco/aruco.h>
+
+class Rift;
+
+#include "Rift.h"
+
 class Scene
 {
 	public:
-		Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard );
+		Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard, Rift* rift );
 		~Scene();
 
 		Ogre::SceneManager* getSceneMgr() { return mSceneMgr; }
 
 		// Initialising/Loading the scene
-		void createRoom();
+		void loadARObjects();
 		void createCameras();
 
 		void update( float dt );
@@ -45,6 +55,9 @@ class Scene
 		Ogre::SceneNode* mBodyTiltNode;
 
 		Ogre::SceneNode* mRoomNode;
+		Ogre::SceneNode* mARONodes[20];
+
+		Rift* mRift;
 };
 
 #endif

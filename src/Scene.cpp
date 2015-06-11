@@ -3,10 +3,17 @@
 #include "Ogre.h"
 #include <OIS/OIS.h>
 
+float TheMarkerSize = 0.025;
+aruco::MarkerDetector TheMarkerDetector;
+std::vector<aruco::Marker> TheMarkers;
 
-Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard)
+map<int, int> ARMarkersList;			// id - index
+map<int, bool> ARMarkersState;		// id - visible?
+
+
+Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard, Rift* rift)
 {
-
+	mRift = rift;
 	mRoot = root;
 	mMouse = mouse;
 	mKeyboard = keyboard;
@@ -19,6 +26,7 @@ Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard)
 	//mSceneMgr->setShadowFarDistance( 30 );
 
 	//createRoom();
+	loadARObjects();
 	createCameras();
 }
 
@@ -28,34 +36,46 @@ Scene::~Scene()
 }
 
 
-void Scene::createRoom()
+void Scene::loadARObjects()
 {
 	mRoomNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("RoomNode");
 
-	Ogre::SceneNode* cubeNode = mRoomNode->createChildSceneNode();
-	Ogre::Entity* cubeEnt = mSceneMgr->createEntity( "Cube.mesh" );
-	cubeEnt->getSubEntity(0)->setMaterialName( "CubeMaterialRed" );
-	cubeNode->attachObject( cubeEnt );
-	cubeNode->setPosition( 1.0, 0.0, 0.0 );
-	Ogre::SceneNode* cubeNode2 = mRoomNode->createChildSceneNode();
-	Ogre::Entity* cubeEnt2 = mSceneMgr->createEntity( "Cube.mesh" );
-	cubeEnt2->getSubEntity(0)->setMaterialName( "CubeMaterialGreen" );
-	cubeNode2->attachObject( cubeEnt2 );
-	cubeNode2->setPosition( 3.5, 0.7, 0.0 );
-	cubeNode->setScale( 0.5, 0.5, 0.5 );
-	cubeNode2->setScale( 0.5, 0.5, 0.5 );
+	Ogre::ResourceGroupManager::getSingleton().addResourceLocation("media",
+				"FileSystem", "Popular");
+	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
 
-	Ogre::SceneNode* cubeNode3 = mRoomNode->createChildSceneNode();
-	Ogre::Entity* cubeEnt3 = mSceneMgr->createEntity( "Cube.mesh" );
-	cubeEnt3->getSubEntity(0)->setMaterialName( "CubeMaterialWhite" );
-	cubeNode3->attachObject( cubeEnt3 );
-	cubeNode3->setPosition( -1.0, -0.7, 0.0 );
-	cubeNode3->setScale( 0.5, 0.5, 0.5 );
+	for (int i = 0; i < 20; i++) {
+		Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
 
-	/*Ogre::Entity* roomEnt = mSceneMgr->createEntity( "Room.mesh" );
-	roomEnt->setCastShadows( false );
-	mRoomNode->attachObject( roomEnt );*/
+		Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
+				"Cube.mesh");
+		Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
+		mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
+		Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
+		ogreNodeChild->attachObject(ogreEntity);
+		ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
+				Ogre::Radian(Ogre::Degree(90)));
+		ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
 
+		// TODO: Read from external source
+		if(i == 0)
+		{
+			ARMarkersList[1009] = i;
+			ARMarkersState[1009] = false;
+
+			mARONodes[i]->setScale(1, 1, 1);
+		}
+		else if(i == 1)
+		{
+			ARMarkersList[724] = i;
+			ARMarkersState[724] = false;
+
+			mARONodes[i]->setScale(0.01, 0.01, 0.01);
+		}
+		else
+			mARONodes[i]->setScale(0.5, 0.5, 0.5);
+
+	}
 	Ogre::Light* roomLight = mSceneMgr->createLight();
 	roomLight->setType(Ogre::Light::LT_POINT);
 	roomLight->setCastShadows( true );
@@ -68,6 +88,8 @@ void Scene::createRoom()
 
 	mRoomNode->attachObject( roomLight );
 }
+
+
 
 void Scene::createCameras()
 {
@@ -229,6 +251,150 @@ void Scene::createCameras()
 
 void Scene::update( float dt )
 {
+
+	cv::Mat TheInputImageUnd_left = mRift->getImageUndLeft();
+	aruco::CameraParameters CameraParamsUnd_left = mRift->getCameraParamsUndLeft();
+
+	/// DETECTING MARKERS on Left Camera
+	TheMarkerDetector.detect(TheInputImageUnd_left, TheMarkers, CameraParamsUnd_left,
+			TheMarkerSize);
+
+	/// UPDATE SCENE
+	uint i;
+	double position[3], orientation[4];
+
+	double markers_left[TheMarkers.size()];
+
+	// show nodes for detected markers
+	for (i = 0; i < TheMarkers.size(); i++) {
+		ARMarkersState[TheMarkers[i].id] = false;
+		TheMarkers[i].OgreGetPoseParameters(position, orientation);
+
+		// TODO: add multiple ARObjects
+		if (ARMarkersList.find(TheMarkers[i].id) != ARMarkersList.end()) {
+
+			int index = ARMarkersList[TheMarkers[i].id];
+
+			std::cout << "FOUND MARKER - Left Camera!! " << TheMarkers[i].id << " at index " << index << std::endl;
+
+			mARONodes[index]->setPosition(position[0], position[1], position[2]);
+			mARONodes[index]->setOrientation(orientation[0], orientation[1],
+					orientation[2], orientation[3]);
+
+			ARMarkersState[TheMarkers[i].id] = true;
+			mARONodes[index]->setVisible(true);
+
+		}
+		else
+			TheMarkers[i].draw(TheInputImageUnd_left, cv::Scalar(0, 0, 255), 1);
+
+		// Store z coordinates
+		markers_left[i] = position[2];
+
+	}
+
+	// Hide the other markers
+	/*for(map<int,bool>::iterator it = ARMarkersState.begin(); it != ARMarkersState.end(); ++it) {
+	  if(!it->second)
+		  mARONodes[ARMarkersList[it->first]]->setVisible(false);
+	}*/
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// Find closest ID
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	float min = 1e5;
+	int id_min = -1;
+	for(uint j = 0 ; j < TheMarkers.size(); j++)
+	{
+		if(markers_left[j] < min)
+		{
+			min = markers_left[j];
+			id_min = j;
+		}
+	}
+
+	// Select closest marker
+	if(id_min > -1)
+	{
+		cout << "#" << TheMarkers[id_min].id << " - Min Distance: " << min << "\n";
+		mRift->selectMarker(TheInputImageUnd_left, TheMarkers[id_min], CameraParamsUnd_left);
+	}
+
+	mRift->setTextureLeft(mRift->getPixelBoxLeft());
+
+	////////////////
+
+	// Updating Right Eye
+	if(mRift->countCameras() == 2){
+
+		cv::Mat TheInputImageUnd_right = mRift->getImageUndRight();
+		aruco::CameraParameters CameraParamsUnd_right = mRift->getCameraParamsUndRight();
+
+		/// DETECTING MARKERS on Right Camera
+		TheMarkerDetector.detect(TheInputImageUnd_right, TheMarkers, CameraParamsUnd_right,
+				TheMarkerSize);
+
+		double markers_right[TheMarkers.size()];
+
+		// show nodes for detected markers
+		for (i = 0; i < TheMarkers.size(); i++) {
+			ARMarkersState[TheMarkers[i].id] = false;
+			TheMarkers[i].OgreGetPoseParameters(position, orientation);
+
+			// TODO: add multiple ARObjects
+			if (ARMarkersList.find(TheMarkers[i].id) != ARMarkersList.end()) {
+
+				int index = ARMarkersList[TheMarkers[i].id];
+
+				std::cout << "FOUND MARKER - Right Camera!! " << TheMarkers[i].id << " at index " << index << std::endl;
+
+				mARONodes[index]->setPosition(position[0], position[1], position[2]);
+				mARONodes[index]->setOrientation(orientation[0], orientation[1],
+						orientation[2], orientation[3]);
+
+				ARMarkersState[TheMarkers[i].id] = true;
+				mARONodes[index]->setVisible(true);
+
+			}
+			else
+				TheMarkers[i].draw(TheInputImageUnd_right, cv::Scalar(0, 0, 255), 1);
+
+			// Store z coordinates
+			markers_right[i] = position[2];
+
+		}
+
+		// Hide the other markers
+		/*for(map<int,bool>::iterator it = ARMarkersState.begin(); it != ARMarkersState.end(); ++it) {
+		  if(!it->second)
+			  mARONodes[ARMarkersList[it->first]]->setVisible(false);
+		}*/
+
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		/// Find closest ID
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		float min = 1e5;
+		int id_min = -1;
+		for(uint j = 0 ; j < TheMarkers.size(); j++)
+		{
+			if(markers_right[j] < min)
+			{
+				min = markers_right[j];
+				id_min = j;
+			}
+		}
+
+		// Select closest marker
+		if(id_min > -1)
+		{
+			cout << "#" << TheMarkers[id_min].id << " - Min Distance: " << min << "\n";
+			mRift->selectMarker(TheInputImageUnd_right, TheMarkers[id_min], CameraParamsUnd_right);
+		}
+
+		mRift->setTextureRight(mRift->getPixelBoxRight());
+	}
+
+
 	float forward = (mKeyboard->isKeyDown( OIS::KC_W ) ? 0 : 1) + (mKeyboard->isKeyDown( OIS::KC_S ) ? 0 : -1);
 	float leftRight = (mKeyboard->isKeyDown( OIS::KC_A ) ? 0 : 1) + (mKeyboard->isKeyDown( OIS::KC_D ) ? 0 : -1);
 

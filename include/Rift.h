@@ -25,7 +25,6 @@
 #include "OGRE/OgreSingleton.h"
 using namespace OVR;
 
-
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -90,6 +89,14 @@ class Rift : public Ogre::Singleton<Rift>
 		void selectMarker(cv::Mat &Image, aruco::Marker &M,
 				const aruco::CameraParameters &CP, bool setYperpendicular = false);
 		int countCameras();
+		void setTextureLeft(Ogre::PixelBox px);
+		void setTextureRight(Ogre::PixelBox px);
+		cv::Mat getImageUndLeft();
+		cv::Mat getImageUndRight();
+		aruco::CameraParameters getCameraParamsUndLeft();
+		aruco::CameraParameters getCameraParamsUndRight();
+		Ogre::PixelBox getPixelBoxLeft();
+		Ogre::PixelBox getPixelBoxRight();
 
 	protected:
 

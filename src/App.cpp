@@ -22,7 +22,7 @@ App::App()
 	initOgre();
 	initOIS();
 
-	mScene = new Scene( mRoot, mMouse, mKeyboard );
+	mScene = new Scene( mRoot, mMouse, mKeyboard, mRift);
 
 	createViewports();
 

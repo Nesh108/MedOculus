@@ -24,10 +24,6 @@ Ogre::PixelBox mPixelBox_right;
 Ogre::TexturePtr mTexture_right;
 aruco::CameraParameters CameraParams_right, CameraParamsUnd_right;
 
-float TheMarkerSize = 0.025;
-aruco::MarkerDetector TheMarkerDetector;
-std::vector<aruco::Marker> TheMarkers;
-
 int cameraCount = 2;
 //////////////////////////////////////////
 // Static members for handling the API:
@@ -55,7 +51,6 @@ void Rift::shutdown()
 
 Rift::Rift( int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow, bool rotateView )
 {
-
 	if( ! isInitialized ) throw( "Need to initialize first. Call Rift::init()!" );
 	std::cout << "Creating Rift (ID: " << ID << ")" << std::endl;
 
@@ -445,102 +440,19 @@ bool Rift::update( float dt )
 {
 
     ///////////////////////////////////////////////////////////
-	// Update the Video streams:
-	// Updating Left Eye
+	// Fetching Left Eye
 	TheVideoCapturer_left.grab();
 	TheVideoCapturer_left.retrieve(TheInputImage_left);
 	cv::undistort(TheInputImage_left, TheInputImageUnd_left,
 			CameraParams_left.CameraMatrix, CameraParams_left.Distorsion);
 
-	/// DETECT MARKERS
-	TheMarkerDetector.detect(TheInputImageUnd_left, TheMarkers, CameraParamsUnd_right,
-			TheMarkerSize);
-
-	/// UPDATE SCENE
-	uint i;
-	double position[3], orientation[4];
-
-	double markers_left[TheMarkers.size()];
-
-	// show nodes for detected markers
-	for (i = 0; i < TheMarkers.size(); i++) {
-		TheMarkers[i].OgreGetPoseParameters(position, orientation);
-
-		// Store z coordinates
-		markers_left[i] = position[2];
-		TheMarkers[i].draw(TheInputImageUnd_left, cv::Scalar(0, 0, 255), 1);
-
-	}
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	/// Find closest ID
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	float min = 1e5;
-	int id_min = -1;
-	for(uint j = 0 ; j < TheMarkers.size(); j++)
-	{
-		if(markers_left[j] < min)
-		{
-			min = markers_left[j];
-			id_min = j;
-		}
-	}
-
-	// Select closest marker
-	if(id_min > -1)
-	{
-		cout << "#" << TheMarkers[id_min].id << " - Min Distance: " << min << "\n";
-		selectMarker(TheInputImageUnd_left, TheMarkers[id_min], CameraParamsUnd_left);
-	}
-
-	mTexture_left->getBuffer()->blitFromMemory(mPixelBox_left);
-
-	// Updating Right Eye
+	///////////////////////////////////////////////////////////
+	// Fetching Right Eye
 	if(cameraCount == 2){
 		TheVideoCapturer_right.grab();
 		TheVideoCapturer_right.retrieve(TheInputImage_right);
 		cv::undistort(TheInputImage_right, TheInputImageUnd_right,
 				CameraParams_right.CameraMatrix, CameraParams_right.Distorsion);
-
-		/// DETECT MARKERS
-		TheMarkerDetector.detect(TheInputImageUnd_right, TheMarkers, CameraParamsUnd_right,
-				TheMarkerSize);
-
-
-		double markers_right[TheMarkers.size()];
-
-		// show nodes for detected markers
-		for (i = 0; i < TheMarkers.size(); i++) {
-			TheMarkers[i].OgreGetPoseParameters(position, orientation);
-
-			// Store z coordinates
-			markers_right[i] = position[2];
-			TheMarkers[i].draw(TheInputImageUnd_right, cv::Scalar(0, 0, 255), 1);
-
-		}
-
-		////////////////////////////////////////////////////////////////////////////////////////////////////
-		/// Find closest ID
-		////////////////////////////////////////////////////////////////////////////////////////////////////
-		float min = 1e5;
-		int id_min = -1;
-		for(uint j = 0 ; j < TheMarkers.size(); j++)
-		{
-			if(markers_right[j] < min)
-			{
-				min = markers_right[j];
-				id_min = j;
-			}
-		}
-
-		// Select closest marker
-		if(id_min > -1)
-		{
-			cout << "#" << TheMarkers[id_min].id << " - Min Distance: " << min << "\n";
-			selectMarker(TheInputImageUnd_right, TheMarkers[id_min], CameraParamsUnd_right);
-		}
-
-		mTexture_right->getBuffer()->blitFromMemory(mPixelBox_right);
 	}
 
 	if( !hmd ) return true;
@@ -601,6 +513,14 @@ void Rift::recenterPose()
 {
 	if ( hmd )
 		ovrHmd_RecenterPose( hmd );
+}
+
+void Rift::setTextureLeft(Ogre::PixelBox px){
+	mTexture_left->getBuffer()->blitFromMemory(px);
+}
+
+void Rift::setTextureRight(Ogre::PixelBox px){
+	mTexture_right->getBuffer()->blitFromMemory(px);
 }
 
 /*
@@ -691,7 +611,7 @@ void Rift::createVideoStreams()
 // TODO: Not working for some reason...
 int Rift::countCameras()
 {
-   cv::VideoCapture temp_camera;
+   /*cv::VideoCapture temp_camera;
    int maxTested = 2;
    for (int i = 0; i < maxTested; i++){
 	   try{
@@ -705,7 +625,36 @@ int Rift::countCameras()
 	   }
 
    }
+
+
    return maxTested;
+   */
+
+	return cameraCount;
+}
+
+cv::Mat Rift::getImageUndLeft(){
+	return TheInputImageUnd_left;
+}
+
+cv::Mat Rift::getImageUndRight(){
+	return TheInputImageUnd_right;
+}
+
+aruco::CameraParameters Rift::getCameraParamsUndLeft(){
+	return CameraParamsUnd_left;
+}
+
+aruco::CameraParameters Rift::getCameraParamsUndRight(){
+	return CameraParamsUnd_right;
+}
+
+Ogre::PixelBox Rift::getPixelBoxLeft(){
+	return mPixelBox_left;
+}
+
+Ogre::PixelBox Rift::getPixelBoxRight(){
+	return mPixelBox_right;
 }
 
 void Rift::selectMarker(cv::Mat &Image, aruco::Marker &m,
