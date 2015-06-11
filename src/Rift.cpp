@@ -24,7 +24,11 @@ Ogre::PixelBox mPixelBox_right;
 Ogre::TexturePtr mTexture_right;
 aruco::CameraParameters CameraParams_right, CameraParamsUnd_right;
 
-int cameraCount = 1;
+float TheMarkerSize = 0.025;
+aruco::MarkerDetector TheMarkerDetector;
+std::vector<aruco::Marker> TheMarkers;
+
+int cameraCount = 2;
 //////////////////////////////////////////
 // Static members for handling the API:
 //////////////////////////////////////////
@@ -448,6 +452,47 @@ bool Rift::update( float dt )
 	cv::undistort(TheInputImage_left, TheInputImageUnd_left,
 			CameraParams_left.CameraMatrix, CameraParams_left.Distorsion);
 
+	/// DETECT MARKERS
+	TheMarkerDetector.detect(TheInputImageUnd_left, TheMarkers, CameraParamsUnd_right,
+			TheMarkerSize);
+
+	/// UPDATE SCENE
+	uint i;
+	double position[3], orientation[4];
+
+	double markers_left[TheMarkers.size()];
+
+	// show nodes for detected markers
+	for (i = 0; i < TheMarkers.size(); i++) {
+		TheMarkers[i].OgreGetPoseParameters(position, orientation);
+
+		// Store z coordinates
+		markers_left[i] = position[2];
+		TheMarkers[i].draw(TheInputImageUnd_left, cv::Scalar(0, 0, 255), 1);
+
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// Find closest ID
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	float min = 1e5;
+	int id_min = -1;
+	for(uint j = 0 ; j < TheMarkers.size(); j++)
+	{
+		if(markers_left[j] < min)
+		{
+			min = markers_left[j];
+			id_min = j;
+		}
+	}
+
+	// Select closest marker
+	if(id_min > -1)
+	{
+		cout << "#" << TheMarkers[id_min].id << " - Min Distance: " << min << "\n";
+		selectMarker(TheInputImageUnd_left, TheMarkers[id_min], CameraParamsUnd_left);
+	}
+
 	mTexture_left->getBuffer()->blitFromMemory(mPixelBox_left);
 
 	// Updating Right Eye
@@ -456,6 +501,44 @@ bool Rift::update( float dt )
 		TheVideoCapturer_right.retrieve(TheInputImage_right);
 		cv::undistort(TheInputImage_right, TheInputImageUnd_right,
 				CameraParams_right.CameraMatrix, CameraParams_right.Distorsion);
+
+		/// DETECT MARKERS
+		TheMarkerDetector.detect(TheInputImageUnd_right, TheMarkers, CameraParamsUnd_right,
+				TheMarkerSize);
+
+
+		double markers_right[TheMarkers.size()];
+
+		// show nodes for detected markers
+		for (i = 0; i < TheMarkers.size(); i++) {
+			TheMarkers[i].OgreGetPoseParameters(position, orientation);
+
+			// Store z coordinates
+			markers_right[i] = position[2];
+			TheMarkers[i].draw(TheInputImageUnd_right, cv::Scalar(0, 0, 255), 1);
+
+		}
+
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		/// Find closest ID
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		float min = 1e5;
+		int id_min = -1;
+		for(uint j = 0 ; j < TheMarkers.size(); j++)
+		{
+			if(markers_right[j] < min)
+			{
+				min = markers_right[j];
+				id_min = j;
+			}
+		}
+
+		// Select closest marker
+		if(id_min > -1)
+		{
+			cout << "#" << TheMarkers[id_min].id << " - Min Distance: " << min << "\n";
+			selectMarker(TheInputImageUnd_right, TheMarkers[id_min], CameraParamsUnd_right);
+		}
 
 		mTexture_right->getBuffer()->blitFromMemory(mPixelBox_right);
 	}
@@ -623,4 +706,74 @@ int Rift::countCameras()
 
    }
    return maxTested;
+}
+
+void Rift::selectMarker(cv::Mat &Image, aruco::Marker &m,
+		const aruco::CameraParameters &CP, bool setYperpendicular) {
+	cv::Mat objectPoints(8, 3, CV_32FC1);
+	double halfSize = m.ssize / 2;
+
+	if (setYperpendicular) {
+		objectPoints.at<float>(0, 0) = -halfSize;
+		objectPoints.at<float>(0, 1) = 0;
+		objectPoints.at<float>(0, 2) = -halfSize;
+		objectPoints.at<float>(1, 0) = halfSize;
+		objectPoints.at<float>(1, 1) = 0;
+		objectPoints.at<float>(1, 2) = -halfSize;
+		objectPoints.at<float>(2, 0) = halfSize;
+		objectPoints.at<float>(2, 1) = 0;
+		objectPoints.at<float>(2, 2) = halfSize;
+		objectPoints.at<float>(3, 0) = -halfSize;
+		objectPoints.at<float>(3, 1) = 0;
+		objectPoints.at<float>(3, 2) = halfSize;
+
+		objectPoints.at<float>(4, 0) = -halfSize;
+		objectPoints.at<float>(4, 1) = m.ssize;
+		objectPoints.at<float>(4, 2) = -halfSize;
+		objectPoints.at<float>(5, 0) = halfSize;
+		objectPoints.at<float>(5, 1) = m.ssize;
+		objectPoints.at<float>(5, 2) = -halfSize;
+		objectPoints.at<float>(6, 0) = halfSize;
+		objectPoints.at<float>(6, 1) = m.ssize;
+		objectPoints.at<float>(6, 2) = halfSize;
+		objectPoints.at<float>(7, 0) = -halfSize;
+		objectPoints.at<float>(7, 1) = m.ssize;
+		objectPoints.at<float>(7, 2) = halfSize;
+	} else {
+		objectPoints.at<float>(0, 0) = -halfSize;
+		objectPoints.at<float>(0, 1) = -halfSize;
+		objectPoints.at<float>(0, 2) = 0;
+		objectPoints.at<float>(1, 0) = halfSize;
+		objectPoints.at<float>(1, 1) = -halfSize;
+		objectPoints.at<float>(1, 2) = 0;
+		objectPoints.at<float>(2, 0) = halfSize;
+		objectPoints.at<float>(2, 1) = halfSize;
+		objectPoints.at<float>(2, 2) = 0;
+		objectPoints.at<float>(3, 0) = -halfSize;
+		objectPoints.at<float>(3, 1) = halfSize;
+		objectPoints.at<float>(3, 2) = 0;
+
+		objectPoints.at<float>(4, 0) = -halfSize;
+		objectPoints.at<float>(4, 1) = -halfSize;
+		objectPoints.at<float>(4, 2) = m.ssize;
+		objectPoints.at<float>(5, 0) = halfSize;
+		objectPoints.at<float>(5, 1) = -halfSize;
+		objectPoints.at<float>(5, 2) = m.ssize;
+		objectPoints.at<float>(6, 0) = halfSize;
+		objectPoints.at<float>(6, 1) = halfSize;
+		objectPoints.at<float>(6, 2) = m.ssize;
+		objectPoints.at<float>(7, 0) = -halfSize;
+		objectPoints.at<float>(7, 1) = halfSize;
+		objectPoints.at<float>(7, 2) = m.ssize;
+	}
+
+	vector<cv::Point2f> imagePoints;
+	cv::projectPoints(objectPoints, m.Rvec, m.Tvec, CP.CameraMatrix, CP.Distorsion,imagePoints);
+
+	cv::line(Image, imagePoints[0], imagePoints[1], cv::Scalar(0,255,255,255), 20, CV_AA);
+	cv::line(Image, imagePoints[1], imagePoints[2], cv::Scalar(0,255,255,255), 20, CV_AA);
+	cv::line(Image, imagePoints[2], imagePoints[3], cv::Scalar(0,255,255,255), 20, CV_AA);
+	cv::line(Image, imagePoints[3], imagePoints[0], cv::Scalar(0,255,255,255), 20, CV_AA);
+
+
 }

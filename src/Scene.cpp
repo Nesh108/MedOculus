@@ -3,9 +3,6 @@
 #include "Ogre.h"
 #include <OIS/OIS.h>
 
-/*float TheMarkerSize = 0.025;
-aruco::MarkerDetector TheMarkerDetector;
-std::vector<aruco::Marker> TheMarkers;*/
 
 Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard)
 {
@@ -21,7 +18,7 @@ Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard)
 
 	//mSceneMgr->setShadowFarDistance( 30 );
 
-	createRoom();
+	//createRoom();
 	createCameras();
 }
 

@@ -29,7 +29,9 @@ using namespace OVR;
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <aruco.h>
+#include <opencv2/calib3d/calib3d.hpp>
+#include <aruco/aruco.h>
+
 
 
 class Rift : public Ogre::Singleton<Rift>
@@ -85,6 +87,8 @@ class Rift : public Ogre::Singleton<Rift>
 		/*! This will return to true if Rift wasn't found at startup.
 		 */
 		bool isDummyRift() { return mUseDummyHMD; }
+		void selectMarker(cv::Mat &Image, aruco::Marker &M,
+				const aruco::CameraParameters &CP, bool setYperpendicular = false);
 		int countCameras();
 
 	protected:
