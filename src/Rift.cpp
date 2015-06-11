@@ -16,6 +16,15 @@ Ogre::TexturePtr mTexture_left;
 aruco::CameraParameters CameraParams_left, CameraParamsUnd_left;
 
 
+// Right camera
+cv::VideoCapture TheVideoCapturer_right;
+cv::Mat TheInputImage_right, TheInputImageUnd_right;
+
+Ogre::PixelBox mPixelBox_right;
+Ogre::TexturePtr mTexture_right;
+aruco::CameraParameters CameraParams_right, CameraParamsUnd_right;
+
+
 //////////////////////////////////////////
 // Static members for handling the API:
 //////////////////////////////////////////
@@ -440,6 +449,14 @@ bool Rift::update( float dt )
 
 	mTexture_left->getBuffer()->blitFromMemory(mPixelBox_left);
 
+	//Updating Right Eye
+	TheVideoCapturer_right.grab();
+	TheVideoCapturer_right.retrieve(TheInputImage_right);
+	cv::undistort(TheInputImage_right, TheInputImageUnd_right,
+			CameraParams_right.CameraMatrix, CameraParams_right.Distorsion);
+
+	mTexture_right->getBuffer()->blitFromMemory(mPixelBox_right);
+
 	if( !hmd ) return true;
 
 	frameTiming = ovrHmd_BeginFrameTiming(hmd, 0);
@@ -526,9 +543,10 @@ void Rift::setTexture( std::string tex )
 
 void Rift::createVideoStreams()
 {
+	// Left Camera
 	TheVideoCapturer_left.open(0);
 
-	CameraParams_left.readFromXMLFile("internal_camera.yml");
+	CameraParams_left.readFromXMLFile("camera_left.yml");
 	CameraParamsUnd_left = CameraParams_left;
 	CameraParamsUnd_left.Distorsion = cv::Mat::zeros(4, 1, CV_32F);
 
@@ -537,9 +555,9 @@ void Rift::createVideoStreams()
 	cv::undistort(TheInputImage_left, TheInputImageUnd_left,
 			CameraParams_left.CameraMatrix, CameraParams_left.Distorsion);
 
-	double pMatrix[16];
+	double pMatrix_left[16];
 	CameraParamsUnd_left.OgreGetProjectionMatrix(CameraParamsUnd_left.CamSize, CameraParamsUnd_left.CamSize,
-			pMatrix, 0.05, 10, false);
+			pMatrix_left, 0.05, 10, false);
 	int width = CameraParamsUnd_left.CamSize.width;
 	int height = CameraParamsUnd_left.CamSize.height;
 	mPixelBox_left = Ogre::PixelBox(width, height, 1, Ogre::PF_R8G8B8, TheInputImageUnd_left.ptr<uchar>(0));
@@ -550,6 +568,30 @@ void Rift::createVideoStreams()
 			Ogre::TU_DYNAMIC);
 
 	mMatLeft->getTechnique(0)->getPass(0)->getTextureUnitState(1)->setTexture( mTexture_left );
-	// TODO:
-	mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(1)->setTexture( mTexture_left );
+
+	// Right Camera
+	TheVideoCapturer_right.open(1);
+
+	CameraParams_right.readFromXMLFile("camera_right.yml");
+	CameraParamsUnd_right = CameraParams_right;
+	CameraParamsUnd_right.Distorsion = cv::Mat::zeros(4, 1, CV_32F);
+
+    TheVideoCapturer_right.grab();
+	TheVideoCapturer_right.retrieve(TheInputImage_right);
+	cv::undistort(TheInputImage_right, TheInputImageUnd_right,
+			CameraParams_right.CameraMatrix, CameraParams_right.Distorsion);
+
+	double pMatrix_right[16];
+	CameraParamsUnd_right.OgreGetProjectionMatrix(CameraParamsUnd_right.CamSize, CameraParamsUnd_right.CamSize,
+			pMatrix_right, 0.05, 10, false);
+	width = CameraParamsUnd_right.CamSize.width;
+	height = CameraParamsUnd_right.CamSize.height;
+	mPixelBox_right = Ogre::PixelBox(width, height, 1, Ogre::PF_R8G8B8, TheInputImageUnd_right.ptr<uchar>(0));
+    mTexture_right = Ogre::TextureManager::getSingleton().createManual(
+			"CameraTexture_right",
+			Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+			Ogre::TEX_TYPE_2D, width, height, 0, Ogre::PF_R8G8B8,
+			Ogre::TU_DYNAMIC);
+
+	mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(1)->setTexture( mTexture_right );
 }
