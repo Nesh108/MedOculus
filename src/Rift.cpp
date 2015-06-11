@@ -24,7 +24,7 @@ Ogre::PixelBox mPixelBox_right;
 Ogre::TexturePtr mTexture_right;
 aruco::CameraParameters CameraParams_right, CameraParamsUnd_right;
 
-int cameraCount = 2;
+int cameraCount = 1;
 //////////////////////////////////////////
 // Static members for handling the API:
 //////////////////////////////////////////
@@ -109,11 +109,11 @@ Rift::Rift( int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow, bool rot
 		// Generate a texture for each eye, as a rendertarget:
 		mLeftEyeRenderTexture = Ogre::TextureManager::getSingleton().createManual(
 				"RiftRenderTextureLeft", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-				Ogre::TEX_TYPE_2D, recommendedTex0Size.w, recommendedTex0Size.h, 0, Ogre::PF_R8G8B8,
+				Ogre::TEX_TYPE_2D, recommendedTex0Size.w, recommendedTex0Size.h, 0, Ogre::PF_A8R8G8B8,
 				Ogre::TU_RENDERTARGET );
 		mRightEyeRenderTexture = Ogre::TextureManager::getSingleton().createManual(
 				"RiftRenderTextureRight", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-				Ogre::TEX_TYPE_2D, recommendedTex1Size.w, recommendedTex1Size.h, 0, Ogre::PF_R8G8B8,
+				Ogre::TEX_TYPE_2D, recommendedTex1Size.w, recommendedTex1Size.h, 0, Ogre::PF_A8R8G8B8,
 				Ogre::TU_RENDERTARGET );
 
 		// Assign the textures to the eyes used later:
@@ -225,19 +225,19 @@ Rift::Rift( int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow, bool rot
 		// Generate a texture for each eye, as a rendertarget:
 		mLeftEyeRenderTexture = Ogre::TextureManager::getSingleton().createManual(
 				"RiftRenderTextureLeft", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-				Ogre::TEX_TYPE_2D, texWidth, texHeight, 0, Ogre::PF_R8G8B8,
+				Ogre::TEX_TYPE_2D, texWidth, texHeight, 0, Ogre::PF_A8R8G8B8,
 				Ogre::TU_RENDERTARGET );
 		mRightEyeRenderTexture = Ogre::TextureManager::getSingleton().createManual(
 				"RiftRenderTextureRight", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-				Ogre::TEX_TYPE_2D, texWidth, texHeight, 0, Ogre::PF_R8G8B8,
+				Ogre::TEX_TYPE_2D, texWidth, texHeight, 0, Ogre::PF_A8R8G8B8,
 				Ogre::TU_RENDERTARGET );
 
 		// Assign the textures to the eyes used later:
 		mMatLeft = Ogre::MaterialManager::getSingleton().getByName( "Oculus/LeftEye" );
-		mMatLeft->getTechnique(0)->getPass(0)->getTextureUnitState(0)->
+		mMatLeft->getTechnique(0)->getPass(0)->getTextureUnitState(1)->
 			setTexture( mLeftEyeRenderTexture );
 		mMatRight = Ogre::MaterialManager::getSingleton().getByName( "Oculus/RightEye" );
-		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(0)->
+		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(1)->
 			setTexture( mRightEyeRenderTexture );
 
 		/* Default values:
@@ -336,7 +336,7 @@ Rift::Rift( int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow, bool rot
 	meshNode->setScale( 1, 1, -1 );
 
 	mViewport = mRenderWindow->addViewport( mCamera );
-	mViewport->setBackgroundColour(Ogre::ColourValue::Black);
+	mViewport->setBackgroundColour(Ogre::ColourValue(0,0,0,0));
 	mViewport->setOverlaysEnabled(true);
 
 	mPosition = Ogre::Vector3::ZERO;
@@ -359,8 +359,9 @@ void Rift::setCameras( Ogre::Camera* camLeft, Ogre::Camera* camRight )
 	std::cout << "[Rift] Adding viewport to left texture" << std::endl;
 	renderTexLeft->addViewport(camLeft);
 	renderTexLeft->getViewport(0)->setClearEveryFrame(true);
-	renderTexLeft->getViewport(0)->setBackgroundColour(Ogre::ColourValue::Black);
-	renderTexLeft->getViewport(0)->setOverlaysEnabled(true);
+	//renderTexLeft->getViewport(0)->setBackgroundColour(Ogre::ColourValue::Black);
+	renderTexLeft->getViewport(0)->setBackgroundColour(Ogre::ColourValue(0,0,0,0));
+	//renderTexLeft->getViewport(0)->setOverlaysEnabled(true);
 	std::cout << "[Rift] Left texture size: " <<
 		renderTexLeft->getWidth() << "x" << renderTexLeft->getHeight() << std::endl;
 
@@ -368,8 +369,9 @@ void Rift::setCameras( Ogre::Camera* camLeft, Ogre::Camera* camRight )
 	Ogre::RenderTexture* renderTexRight = mRightEyeRenderTexture->getBuffer()->getRenderTarget();
 	renderTexRight->addViewport(camRight);
 	renderTexRight->getViewport(0)->setClearEveryFrame(true);
-	renderTexRight->getViewport(0)->setBackgroundColour(Ogre::ColourValue::Black);
-	renderTexRight->getViewport(0)->setOverlaysEnabled(true);
+	//renderTexRight->getViewport(0)->setBackgroundColour(Ogre::ColourValue::Black);
+	renderTexRight->getViewport(0)->setBackgroundColour(Ogre::ColourValue(0,0,0,0));
+	//renderTexRight->getViewport(0)->setOverlaysEnabled(true);
 	std::cout << "[Rift] Right texture size: " <<
 		renderTexRight->getWidth() << "x" << renderTexRight->getHeight() << std::endl;
 
@@ -570,7 +572,7 @@ void Rift::createVideoStreams()
 			Ogre::TEX_TYPE_2D, width, height, 0, Ogre::PF_R8G8B8,
 			Ogre::TU_DYNAMIC);
 
-	mMatLeft->getTechnique(0)->getPass(0)->getTextureUnitState(1)->setTexture( mTexture_left );
+	mMatLeft->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTexture( mTexture_left );
 
 	// Right Camera
 	if(cameraCount == 2){
@@ -597,10 +599,10 @@ void Rift::createVideoStreams()
 				Ogre::TEX_TYPE_2D, width, height, 0, Ogre::PF_R8G8B8,
 				Ogre::TU_DYNAMIC);
 
-		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(1)->setTexture( mTexture_right );
+		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTexture( mTexture_right );
 	}
 	else
-		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(1)->setTexture( mTexture_left );
+		mMatRight->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTexture( mTexture_left );
 }
 
 // TODO: Not working for some reason...

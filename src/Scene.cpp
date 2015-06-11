@@ -44,7 +44,7 @@ void Scene::createRoom()
 	Ogre::Entity* cubeEnt2 = mSceneMgr->createEntity( "Cube.mesh" );
 	cubeEnt2->getSubEntity(0)->setMaterialName( "CubeMaterialGreen" );
 	cubeNode2->attachObject( cubeEnt2 );
-	cubeNode2->setPosition( 3.0, 0.0, 0.0 );
+	cubeNode2->setPosition( 3.5, 0.7, 0.0 );
 	cubeNode->setScale( 0.5, 0.5, 0.5 );
 	cubeNode2->setScale( 0.5, 0.5, 0.5 );
 
@@ -52,7 +52,7 @@ void Scene::createRoom()
 	Ogre::Entity* cubeEnt3 = mSceneMgr->createEntity( "Cube.mesh" );
 	cubeEnt3->getSubEntity(0)->setMaterialName( "CubeMaterialWhite" );
 	cubeNode3->attachObject( cubeEnt3 );
-	cubeNode3->setPosition( -1.0, 0.0, 0.0 );
+	cubeNode3->setPosition( -1.0, -0.7, 0.0 );
 	cubeNode3->setScale( 0.5, 0.5, 0.5 );
 
 	/*Ogre::Entity* roomEnt = mSceneMgr->createEntity( "Room.mesh" );
