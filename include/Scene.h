@@ -41,6 +41,9 @@ class Scene
 		bool mousePressed(const OIS::MouseEvent&, OIS::MouseButtonID);
 		bool mouseReleased(const OIS::MouseEvent&, OIS::MouseButtonID);
 
+		bool loadLeap();
+		void initMarkersScales();
+
 	private:
 		Ogre::Root* mRoot;
 		OIS::Mouse* mMouse;
@@ -59,5 +62,8 @@ class Scene
 
 		Rift* mRift;
 };
+
+
+void *leapThread(void *arg);
 
 #endif

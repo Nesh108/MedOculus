@@ -24,7 +24,7 @@ Ogre::PixelBox mPixelBox_right;
 Ogre::TexturePtr mTexture_right;
 aruco::CameraParameters CameraParams_right, CameraParamsUnd_right;
 
-int cameraCount = 2;
+int cameraCount = 1;
 
 //////////////////////////////////////////
 // Static members for handling the API:
@@ -553,7 +553,7 @@ void Rift::createVideoStreams()
 
 
 	// Left Camera
-	TheVideoCapturer_left.open(0);
+	TheVideoCapturer_left.open(1);
 	CameraParams_left.readFromXMLFile("camera_left.yml");
 	CameraParamsUnd_left = CameraParams_left;
 	CameraParamsUnd_left.Distorsion = cv::Mat::zeros(4, 1, CV_32F);
@@ -580,7 +580,7 @@ void Rift::createVideoStreams()
 
 	// Right Camera
 	if(cameraCount == 2){
-		TheVideoCapturer_right.open(1);
+		TheVideoCapturer_right.open(2);
 
 		CameraParams_right.readFromXMLFile("camera_right.yml");
 		CameraParamsUnd_right = CameraParams_right;
