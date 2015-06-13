@@ -42,7 +42,7 @@ class Scene
 		bool mouseReleased(const OIS::MouseEvent&, OIS::MouseButtonID);
 
 		bool loadLeap();
-		void initMarkersScales();
+		void initMarkersData();
 
 	private:
 		Ogre::Root* mRoot;

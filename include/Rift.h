@@ -23,7 +23,6 @@
 
 #include "OGRE/Ogre.h"
 #include "OGRE/OgreSingleton.h"
-using namespace OVR;
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -31,7 +30,7 @@ using namespace OVR;
 #include <opencv2/calib3d/calib3d.hpp>
 #include <aruco/aruco.h>
 
-
+using namespace OVR;
 
 class Rift : public Ogre::Singleton<Rift>
 {

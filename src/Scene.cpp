@@ -7,6 +7,16 @@
 #include <pthread.h>
 #include <errno.h>
 
+#include <curl/curl.h>
+#include "CURLplusplus.h"
+
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include <iostream>
+
+using namespace std;
+using namespace rapidjson;
 using namespace Leap;
 
 int SCALE_RATE = 80;
@@ -27,8 +37,14 @@ void *status;
 pthread_t tid_leap;	//thread id
 
 bool isRunning = false;
-
 int selected_marker = -1;
+
+bool USE_LEAP = true;
+
+string SF_OAUTH_URL = "https://login.salesforce.com/services/oauth2/token";
+string SF_FETCH_DATA_URL = "/services/data/v20.0/query?q=SELECT+(SELECT+Id,Name+FROM+Attachments),medicsales__argu__c,Id+FROM+medicsales__dddObject__c";
+
+class CURLplusplus;
 
 class SampleListener : public Listener {
   public:
@@ -278,7 +294,10 @@ Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard, Rift
 
 	loadARObjects();
 	createCameras();
-	loadLeap();
+
+	if(USE_LEAP)
+		loadLeap();
+
 	initMarkersData();
 }
 
@@ -297,6 +316,31 @@ void Scene::initMarkersData(){
 	ARMarkersRotation[1009] = 0;
 	ARMarkersRotation[724]	= 0;
 	ARMarkersRotation[354] = 0;
+
+	CURLplusplus client;
+	string reply = client.Post(SF_OAUTH_URL, "grant_type=password&client_id=3MVG9WtWSKUDG.x5Afv4CDp.bVVOqjt.df.4kXzBCDYeWsO7YyvqziaSMZvxGCavNn72qTDg0XMqlQFfA0OEZ&client_secret=2734140549650017430&username=b.skirlo@gmail.com&password=medicmedic1YltZzsSvIJnxmWV9GDnE33sBO");
+	cout << "Curl Got OAth: " << reply << endl;
+
+	Document doc;
+	doc.Parse(reply.c_str());
+	Value& oath_token = doc["access_token"];
+	Value& inst_url = doc["instance_url"];
+
+	cout << "My access token: " << oath_token.GetString() << endl;
+
+	char bh[200];
+	sprintf(bh, "Authorization: Bearer %s",  oath_token.GetString());
+
+	string bearer_header(bh);
+	cout << "My bearer header: " <<  bearer_header << endl;
+
+	char mUrl[400];
+	sprintf(mUrl, "%s/services/data/v20.0/query?q=SELECT+(SELECT+Id,Name+FROM+Attachments),medicsales__argu__c,Id+FROM+medicsales__dddObject__c",  inst_url.GetString());
+	string fetch_url(mUrl);
+
+	reply = client.Get(fetch_url, bearer_header);
+
+	cout << "Curl Got Fetching: " << reply << endl;
 
 }
 
@@ -349,6 +393,7 @@ void Scene::loadARObjects()
 
 			Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
 					"Cube.mesh");
+			ogreEntity->getSubEntity(0)->setMaterialName( "CubeMaterialGreen" );
 			Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
 			mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
 			Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
