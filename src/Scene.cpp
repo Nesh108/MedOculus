@@ -9,8 +9,8 @@
 
 using namespace Leap;
 
-int SCALE_RATE = 30;
-int ROTATION_RATE = 5;	// degrees
+int SCALE_RATE = 80;
+int ROTATION_RATE = CV_PI/40;	// degrees
 
 float TheMarkerSize = 0.025;
 aruco::MarkerDetector TheMarkerDetector;
@@ -19,6 +19,7 @@ std::vector<aruco::Marker> TheMarkers;
 map<int, int> ARMarkersList;			// id - index
 map<int, bool> ARMarkersState;			// id - visible?
 map<int, float> ARMarkersScale;			// id - scale
+map<int, float> ARMarkersRotation;		// id - Xrotation
 
 int errorT;
 void *status;
@@ -192,11 +193,13 @@ void SampleListener::onFrame(const Controller& controller) {
       case Gesture::TYPE_SWIPE:
       {
         SwipeGesture swipe = gesture;
-        /*std::cout << std::string(2, ' ')
-          << "Swipe id: " << gesture.id()
-          << ", state: " << stateNames[gesture.state()]
-          << ", direction: " << swipe.direction()
-          << ", speed: " << swipe.speed() << std::endl;*/
+
+        if(swipe.direction()[0] > 0)	// To the left
+        	ARMarkersRotation[selected_marker] -= ROTATION_RATE;
+        else							// To the right
+        	ARMarkersRotation[selected_marker] += ROTATION_RATE;
+
+        cout << "Current rotation: " << ARMarkersRotation[selected_marker] << endl;
 
         std::cout << "GESTURE DETECTED: SWIPE " << swipe.direction() << ".\n";;
         break;
@@ -276,7 +279,7 @@ Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard, Rift
 	loadARObjects();
 	createCameras();
 	loadLeap();
-	initMarkersScales();
+	initMarkersData();
 }
 
 Scene::~Scene()
@@ -285,10 +288,15 @@ Scene::~Scene()
 	isRunning = false;
 }
 
-void Scene::initMarkersScales(){
+void Scene::initMarkersData(){
 	ARMarkersScale[1009] = 0.01;
 	ARMarkersScale[724]	= 0.00013675f;
 	ARMarkersScale[354] = 0.0001075f;
+
+
+	ARMarkersRotation[1009] = 0;
+	ARMarkersRotation[724]	= 0;
+	ARMarkersRotation[354] = 0;
 
 }
 
@@ -621,7 +629,6 @@ void Scene::update( float dt )
 	for (i = 0; i < TheMarkers.size(); i++) {
 		TheMarkers[i].OgreGetPoseParameters(position, orientation);
 
-		// TODO: add multiple ARObjects
 		if (ARMarkersList.find(TheMarkers[i].id) != ARMarkersList.end()) {
 
 			int index = ARMarkersList[TheMarkers[i].id];
@@ -631,6 +638,9 @@ void Scene::update( float dt )
 			mARONodes[index]->setPosition(position[0], position[1], position[2]);
 			mARONodes[index]->setOrientation(orientation[0], orientation[1],
 					orientation[2], orientation[3]);
+
+			// TODO: fix rotation
+			mARONodes[index]->rotate(Ogre::Quaternion(Ogre::Degree(10), Ogre::Vector3(1,0,0)) , Ogre::Node::TS_WORLD);
 
 			mARONodes[index]->setScale(ARMarkersScale[TheMarkers[i].id],ARMarkersScale[TheMarkers[i].id],ARMarkersScale[TheMarkers[i].id]);
 
@@ -688,7 +698,6 @@ void Scene::update( float dt )
 		for (i = 0; i < TheMarkers.size(); i++) {
 			TheMarkers[i].OgreGetPoseParameters(position, orientation);
 
-			// TODO: add multiple ARObjects
 			if (ARMarkersList.find(TheMarkers[i].id) != ARMarkersList.end()) {
 
 				int index = ARMarkersList[TheMarkers[i].id];
@@ -697,7 +706,10 @@ void Scene::update( float dt )
 
 				mARONodes[index]->setPosition(position[0], position[1], position[2]);
 				mARONodes[index]->setOrientation(orientation[0], orientation[1],
-						orientation[2], orientation[3]);
+									orientation[2], orientation[3]);
+
+				// TODO: fix rotation
+				mARONodes[index]->rotate(Ogre::Quaternion(Ogre::Degree(10), Ogre::Vector3(1,0,0)) , Ogre::Node::TS_WORLD);
 
 				mARONodes[index]->setScale(ARMarkersScale[TheMarkers[i].id],ARMarkersScale[TheMarkers[i].id],ARMarkersScale[TheMarkers[i].id]);
 
