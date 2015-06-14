@@ -92,7 +92,6 @@ Rift::Rift( int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow, bool rot
 	}
 
 	Ogre::SceneNode* meshNode = mSceneMgr->getRootSceneNode()->createChildSceneNode();
-
 	if( ! mUseDummyHMD )
 	{
 
@@ -340,7 +339,6 @@ Rift::Rift( int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow, bool rot
 	mViewport->setOverlaysEnabled(true);
 
 	mPosition = Ogre::Vector3::ZERO;
-
 
 	///////////////////////////////////////
 	// Start streaming devices:

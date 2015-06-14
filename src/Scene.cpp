@@ -20,7 +20,7 @@ using namespace rapidjson;
 using namespace Leap;
 
 int SCALE_RATE = 80;
-int ROTATION_RATE = CV_PI/40;	// degrees
+int ROTATION_RATE = 2;	// degrees
 
 float TheMarkerSize = 0.025;
 aruco::MarkerDetector TheMarkerDetector;
@@ -30,6 +30,7 @@ map<int, int> ARMarkersList;			// id - index
 map<int, bool> ARMarkersState;			// id - visible?
 map<int, float> ARMarkersScale;			// id - scale
 map<int, float> ARMarkersRotation;		// id - Xrotation
+map<int, string> ARMarkersMesh;			// id - mesh
 
 int errorT;
 void *status;
@@ -37,12 +38,15 @@ void *status;
 pthread_t tid_leap;	//thread id
 
 bool isRunning = false;
+bool isLeapConnected = false;
+
+int closest_marker = -1;
 int selected_marker = -1;
 
 bool USE_LEAP = true;
+bool USE_ONLINE_DATA = false;
 
 string SF_OAUTH_URL = "https://login.salesforce.com/services/oauth2/token";
-string SF_FETCH_DATA_URL = "/services/data/v20.0/query?q=SELECT+(SELECT+Id,Name+FROM+Attachments),medicsales__argu__c,Id+FROM+medicsales__dddObject__c";
 
 class CURLplusplus;
 
@@ -68,18 +72,20 @@ void SampleListener::onInit(const Controller& controller) {
 
 void SampleListener::onConnect(const Controller& controller) {
   std::cout << "Connected" << std::endl;
+  isLeapConnected = true;
   controller.enableGesture(Gesture::TYPE_CIRCLE);
   controller.enableGesture(Gesture::TYPE_KEY_TAP);
-  controller.enableGesture(Gesture::TYPE_SCREEN_TAP);
   controller.enableGesture(Gesture::TYPE_SWIPE);
 }
 
 void SampleListener::onDisconnect(const Controller& controller) {
   // Note: not dispatched when running in a debugger.
+	isLeapConnected = false;
   std::cout << "Disconnected" << std::endl;
 }
 
 void SampleListener::onExit(const Controller& controller) {
+	isLeapConnected = false;
   std::cout << "Exited" << std::endl;
 }
 
@@ -89,79 +95,6 @@ void SampleListener::onFrame(const Controller& controller) {
 
   HandList hands = frame.hands();
 
-/*  if(!hands.isEmpty())
-  std::cout << "Hand coordinates: (" << hands.leftmost().palmPosition().x << "," << hands.leftmost().palmPosition().y <<
-		  "," << hands.leftmost().palmPosition().z <<")\n";
-
-  if(!hands.leftmost().fingers().isEmpty())
-  {
-	  for(int i = 0; i < hands.leftmost().fingers().count(); i++)
-	  std::cout << "#Finger "<< i <<" coordinates: (" << hands.leftmost().fingers()[i].tipPosition().x << "," << hands.leftmost().fingers()[i].tipPosition().y <<
-	  		  "," << hands.leftmost().fingers()[i].tipPosition().z <<")\n";
-
-
-  }*/
-
- /* std::cout << "Frame id: " << frame.id()
-            << ", timestamp: " << frame.timestamp()
-            << ", hands: " << frame.hands().count()
-            << ", extended fingers: " << frame.fingers().extended().count()
-            << ", tools: " << frame.tools().count()
-            << ", gestures: " << frame.gestures().count() << std::endl;
-
-  HandList hands = frame.hands();
-  for (HandList::const_iterator hl = hands.begin(); hl != hands.end(); ++hl) {
-    // Get the first hand
-    const Hand hand = *hl;
-    std::string handType = hand.isLeft() ? "Left hand" : "Right hand";
-    std::cout << std::string(2, ' ') << handType << ", id: " << hand.id()
-              << ", palm position: " << hand.palmPosition() << std::endl;
-    // Get the hand's normal vector and direction
-    const Vector normal = hand.palmNormal();
-    const Vector direction = hand.direction();
-
-    // Calculate the hand's pitch, roll, and yaw angles
-    std::cout << std::string(2, ' ') <<  "pitch: " << direction.pitch() * RAD_TO_DEG << " degrees, "
-              << "roll: " << normal.roll() * RAD_TO_DEG << " degrees, "
-              << "yaw: " << direction.yaw() * RAD_TO_DEG << " degrees" << std::endl;
-
-    // Get the Arm bone
-    Arm arm = hand.arm();
-    std::cout << std::string(2, ' ') <<  "Arm direction: " << arm.direction()
-              << " wrist position: " << arm.wristPosition()
-              << " elbow position: " << arm.elbowPosition() << std::endl;
-
-    // Get fingers
-    const FingerList fingers = hand.fingers();
-    for (FingerList::const_iterator fl = fingers.begin(); fl != fingers.end(); ++fl) {
-      const Finger finger = *fl;
-      std::cout << std::string(4, ' ') <<  fingerNames[finger.type()]
-                << " finger, id: " << finger.id()
-                << ", length: " << finger.length()
-                << "mm, width: " << finger.width() << std::endl;
-
-      // Get finger bones
-      for (int b = 0; b < 4; ++b) {
-        Bone::Type boneType = static_cast<Bone::Type>(b);
-        Bone bone = finger.bone(boneType);
-        std::cout << std::string(6, ' ') <<  boneNames[boneType]
-                  << " bone, start: " << bone.prevJoint()
-                  << ", end: " << bone.nextJoint()
-                  << ", direction: " << bone.direction() << std::endl;
-      }
-    }
-  }
-
-  // Get tools
-  const ToolList tools = frame.tools();
-  for (ToolList::const_iterator tl = tools.begin(); tl != tools.end(); ++tl) {
-    const Tool tool = *tl;
-    std::cout << std::string(2, ' ') <<  "Tool, id: " << tool.id()
-              << ", position: " << tool.tipPosition()
-              << ", direction: " << tool.direction() << std::endl;
-  }
-
-  */
   // Get gestures
   const GestureList gestures = frame.gestures();
   for (int g = 0; g < gestures.count(); ++g) {
@@ -173,35 +106,28 @@ void SampleListener::onFrame(const Controller& controller) {
     	CircleGesture circle = gesture;
         std::string clockwiseness;
 
-        cout << "Changing ID #" << selected_marker << endl;
+		float sweptAngle = 0;
+		if (circle.state() != Gesture::STATE_START) {
+		  CircleGesture previousUpdate = CircleGesture(controller.frame(1).gesture(circle.id()));
+		  sweptAngle = (circle.progress() - previousUpdate.progress()) * 2 * PI;
+		}
 
-        if (circle.pointable().direction().angleTo(circle.normal()) <= PI/2) {
-          clockwiseness = "clockwise";
+		cout << "Swept angle: " << sweptAngle * RAD_TO_DEG<< endl;
+		if (circle.pointable().direction().angleTo(circle.normal()) <= PI/2) {
+		  clockwiseness = "clockwise";
 
-          if(selected_marker != -1)
-        	  ARMarkersScale[selected_marker]  += ARMarkersScale[selected_marker]/SCALE_RATE;
+		  if(selected_marker != -1 && abs(sweptAngle * RAD_TO_DEG) > 5)
+			  ARMarkersScale[selected_marker]  += ARMarkersScale[selected_marker]/SCALE_RATE;
 
-        } else {
-          clockwiseness = "counterclockwise";
+		} else {
+		  clockwiseness = "counterclockwise";
 
-          if(selected_marker != -1 && ARMarkersScale[selected_marker] - ARMarkersScale[selected_marker]/10 > 0)
-        	  ARMarkersScale[selected_marker] -= ARMarkersScale[selected_marker]/SCALE_RATE;
+		  if(selected_marker != -1 && ARMarkersScale[selected_marker] - ARMarkersScale[selected_marker]/10 > 0  && abs(sweptAngle* RAD_TO_DEG) > 5)
+			  ARMarkersScale[selected_marker] -= ARMarkersScale[selected_marker]/SCALE_RATE;
 
-        }
+		}
 
-        // Calculate angle swept since last frame
-        float sweptAngle = 0;
-        if (circle.state() != Gesture::STATE_START) {
-          CircleGesture previousUpdate = CircleGesture(controller.frame(1).gesture(circle.id()));
-          sweptAngle = (circle.progress() - previousUpdate.progress()) * 2 * PI;
-        }
-/*        std::cout << std::string(2, ' ')
-                  << "Circle id: " << gesture.id()
-                  << ", state: " << stateNames[gesture.state()]
-                  << ", progress: " << circle.progress()
-                  << ", radius: " << circle.radius()
-                  << ", angle " << sweptAngle * RAD_TO_DEG
-                  <<  ", " << clockwiseness << std::endl;*/
+		cout << "Changing scale ID #" << selected_marker << " to " << ARMarkersScale[selected_marker] <<  endl;  // Calculate angle swept since last frame
 
     	  std::cout << "GESTURE DETECTED: CIRCLE.\n";
         break;
@@ -210,12 +136,16 @@ void SampleListener::onFrame(const Controller& controller) {
       {
         SwipeGesture swipe = gesture;
 
-        if(swipe.direction()[0] > 0)	// To the left
-        	ARMarkersRotation[selected_marker] -= ROTATION_RATE;
-        else							// To the right
-        	ARMarkersRotation[selected_marker] += ROTATION_RATE;
+        if(hands.leftmost().fingers().count() > 4){
+			if(selected_marker != -1){
+				if(swipe.direction()[0] >= 0)				// To the left
+					ARMarkersRotation[selected_marker] += ROTATION_RATE;
+				else if(swipe.direction()[0] < 0)		// To the right
+					ARMarkersRotation[selected_marker] -= ROTATION_RATE;
 
-        cout << "Current rotation: " << ARMarkersRotation[selected_marker] << endl;
+				cout << "Current rotation: " << ARMarkersRotation[selected_marker] << endl;
+			}
+        }
 
         std::cout << "GESTURE DETECTED: SWIPE " << swipe.direction() << ".\n";;
         break;
@@ -223,25 +153,24 @@ void SampleListener::onFrame(const Controller& controller) {
       case Gesture::TYPE_KEY_TAP:
       {
         KeyTapGesture tap = gesture;
-        /*std::cout << std::string(2, ' ')
-          << "Key Tap id: " << gesture.id()
-          << ", state: " << stateNames[gesture.state()]
-          << ", position: " << tap.position()
-          << ", direction: " << tap.direction()<< std::endl;*/
 
-        std::cout << "GESTURE DETECTED: SWIPE " << tap.direction() << ".\n";;
+			if(selected_marker == -1)
+				selected_marker = closest_marker;
+			else
+				selected_marker = -1;
+
+        cout << "Key Selected: " << selected_marker << endl;
+
         break;
       }
       case Gesture::TYPE_SCREEN_TAP:
       {
         ScreenTapGesture screentap = gesture;
-        /*std::cout << std::string(2, ' ')
-          << "Screen Tap id: " << gesture.id()
-          << ", state: " << stateNames[gesture.state()]
-          << ", position: " << screentap.position()
-          << ", direction: " << screentap.direction()<< std::endl;*/
 
-        std::cout << "GESTURE DETECTED: SCREEN TAP " << screentap.direction() << ".\n";
+			if(selected_marker == -1)
+				selected_marker = closest_marker;
+			else
+				selected_marker = -1;
         break;
       }
       default:
@@ -286,11 +215,8 @@ Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard, Rift
 	mKeyboard = keyboard;
 	mSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
 
-	// Set up main Lighting and Shadows in Scene:
-	//mSceneMgr->setAmbientLight( Ogre::ColourValue(0.1f,0.1f,0.1f) );
-	//mSceneMgr->setShadowTechnique(Ogre::SHADOWTYPE_STENCIL_ADDITIVE);
-
-	//mSceneMgr->setShadowFarDistance( 30 );
+	if(USE_ONLINE_DATA)
+		initMarkersData();
 
 	loadARObjects();
 	createCameras();
@@ -298,7 +224,6 @@ Scene::Scene( Ogre::Root* root, OIS::Mouse* mouse, OIS::Keyboard* keyboard, Rift
 	if(USE_LEAP)
 		loadLeap();
 
-	initMarkersData();
 }
 
 Scene::~Scene()
@@ -308,14 +233,13 @@ Scene::~Scene()
 }
 
 void Scene::initMarkersData(){
-	ARMarkersScale[1009] = 0.01;
-	ARMarkersScale[724]	= 0.00013675f;
-	ARMarkersScale[354] = 0.0001075f;
 
+	fetchData();
 
-	ARMarkersRotation[1009] = 0;
-	ARMarkersRotation[724]	= 0;
-	ARMarkersRotation[354] = 0;
+}
+
+void Scene::fetchData(){
+	// Fetching stuff
 
 	CURLplusplus client;
 	string reply = client.Post(SF_OAUTH_URL, "grant_type=password&client_id=3MVG9WtWSKUDG.x5Afv4CDp.bVVOqjt.df.4kXzBCDYeWsO7YyvqziaSMZvxGCavNn72qTDg0XMqlQFfA0OEZ&client_secret=2734140549650017430&username=b.skirlo@gmail.com&password=medicmedic1YltZzsSvIJnxmWV9GDnE33sBO");
@@ -335,14 +259,112 @@ void Scene::initMarkersData(){
 	cout << "My bearer header: " <<  bearer_header << endl;
 
 	char mUrl[400];
-	sprintf(mUrl, "%s/services/data/v20.0/query?q=SELECT+(SELECT+Id,Name+FROM+Attachments),medicsales__argu__c,Id+FROM+medicsales__dddObject__c",  inst_url.GetString());
+	sprintf(mUrl, "%s/services/data/v20.0/query?q=SELECT+(SELECT+Id,Name+FROM+Attachments),medicsales__argu__c,medicsales__rot_x__c,medicsales__rot_y__c,medicsales__rot_z__c,medicsales__scale_x__c,medicsales__scale_y__c,medicsales__scale_z__c,medicsales__marker_Id__c,Id+FROM+medicsales__dddObject__c",  inst_url.GetString());
 	string fetch_url(mUrl);
 
 	reply = client.Get(fetch_url, bearer_header);
 
 	cout << "Curl Got Fetching: " << reply << endl;
 
+	doc.Parse(reply.c_str());
+	Value& records = doc["records"];
+	Value& total_objects = doc["totalSize"];
+
+	assert(records.IsArray());
+
+	// Fetching data
+	int count = 0;
+	uint i;
+	for (i = 0; i < total_objects.GetInt(); i++)
+	{
+
+		Value& marker_id = records[i]["medicsales__marker_Id__c"];
+		Value& scale = records[i]["medicsales__scale_x__c"];
+		Value& rot = records[i]["medicsales__rot_x__c"];
+		Value& attachs = records[i]["Attachments"];
+		attachs = attachs["records"];
+		Value& id = attachs[0]["Id"];
+		Value& name = attachs[0]["Name"];
+
+		struct stat buf;
+		char p[400];
+		sprintf(p, "../media/%d-%s",  count, name.GetString());
+		if (stat(p, &buf) == -1)
+		{
+			char mDataUrl[400];
+			sprintf(mDataUrl, "%s/services/data/v20.0/sobjects/Attachment/%s/body",  inst_url.GetString(), id.GetString());
+			string fetch_url(mDataUrl);
+
+			printf("Fetching from: %s - records[%d] = %s - %s\n", fetch_url.c_str(), i, id.GetString(), name.GetString());
+			reply = client.Get(fetch_url, bearer_header);
+
+			ofstream myfile;
+
+			char path[400];
+			if(!hasEnding(name.GetString(),".material") && !hasEnding(name.GetString(),".skeleton"))
+			{
+				sprintf(path, "../media/%d-%s",  count, name.GetString());
+				cout << "Writing to: " << path << endl;
+				myfile.open (path);
+				myfile << reply;
+				myfile.close();
+
+				int m_id = marker_id.GetDouble();
+				ARMarkersList[m_id] = count;
+				ARMarkersScale[m_id] = (float) scale.GetDouble();
+				ARMarkersRotation[m_id] = (float) rot.GetDouble();
+
+				cout << "Count: " << count << " - scale: " << ARMarkersScale[m_id] << " - rot: " << ARMarkersRotation[m_id] << endl;
+				char mesh[400];
+				sprintf(mesh, "%d-%s",  count, name.GetString());
+
+				ARMarkersMesh[m_id] = mesh;
+
+				cout << "Added mesh: " << mesh << " - id: " << m_id << endl;
+				cout << "Count: " << count << endl;
+				count++;
+			}
+			else
+			{
+				cout << "Skipped mesh" << endl;
+				sprintf(path, "../media/%d-%s",  count-1, name.GetString());
+				cout << "Writing to: " << path << endl;
+				myfile.open (path);
+				myfile << reply;
+				myfile.close();
+
+			}
+		}
+		else
+			{
+				cout << "Already existing: " << name.GetString() << endl;
+				if(!hasEnding(name.GetString(),".material") && !hasEnding(name.GetString(),".skeleton"))
+				{
+					int m_id = marker_id.GetDouble();
+					ARMarkersList[m_id] = count;
+					ARMarkersScale[m_id] = (float) scale.GetDouble();
+					ARMarkersRotation[m_id] = (float) rot.GetDouble();
+
+					char mesh[400];
+					sprintf(mesh, "%d-%s",  count, name.GetString());
+
+					ARMarkersMesh[m_id] = mesh;
+
+					count++;
+				}
+			}
+	}
+
 }
+
+bool Scene::hasEnding (std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
 
 bool Scene::loadLeap(){
 
@@ -382,81 +404,45 @@ void Scene::loadARObjects()
 				"FileSystem", "Popular");
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
 
-	for (int i = 0; i < 3; i++) {
+	for(map<int,int>::iterator it = ARMarkersList.begin(); it != ARMarkersList.end(); ++it) {
 
-		// TODO: Read from external source
-		if(i == 0)
-		{
-			int id = 1009;
+		int id = it->first;
+		int i = it->second;
 
-			Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
+		string mesh_name = ARMarkersMesh[id];
 
-			Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
-					"Cube.mesh");
-			ogreEntity->getSubEntity(0)->setMaterialName( "CubeMaterialGreen" );
-			Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
-			mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
-			Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
-			ogreNodeChild->attachObject(ogreEntity);
-			ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
-					Ogre::Radian(Ogre::Degree(90)));
-			ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
+		cout << "Adding id: " << id << " - mesh: " << mesh_name << " at index: " << i << endl;
 
-			ARMarkersList[id] = i;
+		Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
 
-			mARONodes[i]->setScale(ARMarkersScale[id], ARMarkersScale[id], ARMarkersScale[id]);
-		}
-		else if(i == 1)
-		{
-			int id = 724;
+		Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
+				mesh_name);
+		Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
+		mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
+		Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
+		ogreNodeChild->attachObject(ogreEntity);
+		ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
+				Ogre::Radian(Ogre::Degree(90)));
+		ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
 
-			Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
+		ARMarkersList[id] = i;
 
-			Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
-					"ninja.mesh");
-			Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
-			mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
-			Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
-			ogreNodeChild->attachObject(ogreEntity);
-			ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
-					Ogre::Radian(Ogre::Degree(90)));
-			ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
-
-			ARMarkersList[id] = i;
-
-			mARONodes[i]->setScale(ARMarkersScale[id], ARMarkersScale[id], ARMarkersScale[id]);
-		}
-		else if(i == 2)
-		{
-			int id = 354;
-			Ogre::String entityName = "ARO_"+ Ogre::StringConverter::toString(i);
-
-			Ogre::Entity* ogreEntity = mSceneMgr->createEntity(entityName,
-					"sphere.mesh");
-			Ogre::Real offset = ogreEntity->getBoundingBox().getHalfSize().y;
-			mARONodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
-			Ogre::SceneNode *ogreNodeChild = mARONodes[i]->createChildSceneNode();
-			ogreNodeChild->attachObject(ogreEntity);
-			ogreNodeChild->rotate(Ogre::Vector3(1, 0, 0),
-					Ogre::Radian(Ogre::Degree(90)));
-			ogreNodeChild->translate(0, 0, offset, Ogre::Node::TS_PARENT);
-
-			ARMarkersList[id] = i;
-
-			mARONodes[i]->setScale(ARMarkersScale[id], ARMarkersScale[id], ARMarkersScale[id]);
-		}
-
+		mARONodes[i]->setScale(ARMarkersScale[id], ARMarkersScale[id], ARMarkersScale[id]);
+		mARONodes[i]->setVisible(false);
 
 	}
+
 	Ogre::Light* roomLight = mSceneMgr->createLight();
 	roomLight->setType(Ogre::Light::LT_POINT);
 	roomLight->setCastShadows( true );
 	roomLight->setShadowFarDistance( 30 );
-	roomLight->setAttenuation( 65, 1.0, 0.07, 0.017 );
+	roomLight->setAttenuation( 1000, 1.0, 0.07, 0.017 );
 	roomLight->setSpecularColour( .25, .25, .25 );
 	roomLight->setDiffuseColour( 0.85, 0.76, 0.7 );
+	roomLight->setPowerScale(100);
 
 	roomLight->setPosition( 5, 5, 5 );
+	mSceneMgr->setAmbientLight(Ogre::ColourValue(0.5,0.5,0.5));
 
 	mRoomNode->attachObject( roomLight );
 }
@@ -653,12 +639,23 @@ void Scene::createCameras()
 void Scene::update( float dt )
 {
 
+	char leapStatus[400];
+	cv::Point textPos(20,20);
+
+	if(isLeapConnected)
+		sprintf(leapStatus, "Leap is connected.");
+	else
+		sprintf(leapStatus, "Leap is not connected.");
+
+
 	cv::Mat TheInputImageUnd_left = mRift->getImageUndLeft();
 	aruco::CameraParameters CameraParamsUnd_left = mRift->getCameraParamsUndLeft();
 
 	/// DETECTING MARKERS on Left Camera
 	TheMarkerDetector.detect(TheInputImageUnd_left, TheMarkers, CameraParamsUnd_left,
 			TheMarkerSize);
+
+	cv::putText(TheInputImageUnd_left, leapStatus,textPos,cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar::all(255), 1, CV_AA);
 
 	/// UPDATE SCENE
 	uint i;
@@ -684,13 +681,14 @@ void Scene::update( float dt )
 			mARONodes[index]->setOrientation(orientation[0], orientation[1],
 					orientation[2], orientation[3]);
 
-			// TODO: fix rotation
-			mARONodes[index]->rotate(Ogre::Quaternion(Ogre::Degree(10), Ogre::Vector3(1,0,0)) , Ogre::Node::TS_WORLD);
-
+			mARONodes[index]->rotate(Ogre::Vector3(0, 0, 1), Ogre::Radian(Ogre::Degree(ARMarkersRotation[TheMarkers[i].id])));
 			mARONodes[index]->setScale(ARMarkersScale[TheMarkers[i].id],ARMarkersScale[TheMarkers[i].id],ARMarkersScale[TheMarkers[i].id]);
 
 			ARMarkersState[TheMarkers[i].id] = true;
 			mARONodes[index]->setVisible(true);
+
+			if(selected_marker != -1 && selected_marker == TheMarkers[i].id)
+				mRift->selectMarker(TheInputImageUnd_left, TheMarkers[i], CameraParamsUnd_left);
 
 		}
 		else
@@ -719,8 +717,8 @@ void Scene::update( float dt )
 	if(id_min > -1)
 	{
 		cout << "#" << TheMarkers[id_min].id << " - Min Distance: " << min << "\n";
-		selected_marker = TheMarkers[id_min].id;
-		mRift->selectMarker(TheInputImageUnd_left, TheMarkers[id_min], CameraParamsUnd_left);
+		closest_marker = TheMarkers[id_min].id;
+
 	}
 
 	mRift->setTextureLeft(mRift->getPixelBoxLeft());
@@ -732,6 +730,8 @@ void Scene::update( float dt )
 
 		cv::Mat TheInputImageUnd_right = mRift->getImageUndRight();
 		aruco::CameraParameters CameraParamsUnd_right = mRift->getCameraParamsUndRight();
+
+		cv::putText(TheInputImageUnd_right, leapStatus,textPos,cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar::all(255), 1, CV_AA);
 
 		/// DETECTING MARKERS on Right Camera
 		TheMarkerDetector.detect(TheInputImageUnd_right, TheMarkers, CameraParamsUnd_right,
@@ -753,13 +753,16 @@ void Scene::update( float dt )
 				mARONodes[index]->setOrientation(orientation[0], orientation[1],
 									orientation[2], orientation[3]);
 
-				// TODO: fix rotation
-				mARONodes[index]->rotate(Ogre::Quaternion(Ogre::Degree(10), Ogre::Vector3(1,0,0)) , Ogre::Node::TS_WORLD);
+				mARONodes[index]->rotate(Ogre::Vector3(0, 0, 1), Ogre::Radian(Ogre::Degree(ARMarkersRotation[TheMarkers[i].id])));
 
 				mARONodes[index]->setScale(ARMarkersScale[TheMarkers[i].id],ARMarkersScale[TheMarkers[i].id],ARMarkersScale[TheMarkers[i].id]);
 
 				ARMarkersState[TheMarkers[i].id] = true;
 				mARONodes[index]->setVisible(true);
+
+				if(selected_marker != -1 && selected_marker == TheMarkers[i].id)
+					mRift->selectMarker(TheInputImageUnd_right,  TheMarkers[i], CameraParamsUnd_right);
+
 
 			}
 			else
@@ -788,8 +791,8 @@ void Scene::update( float dt )
 		if(id_min > -1)
 		{
 			cout << "#" << TheMarkers[id_min].id << " - Min Distance: " << min << "\n";
-			selected_marker = TheMarkers[id_min].id;
-			mRift->selectMarker(TheInputImageUnd_right, TheMarkers[id_min], CameraParamsUnd_right);
+			closest_marker = TheMarkers[id_min].id;
+
 		}
 
 		mRift->setTextureRight(mRift->getPixelBoxRight());
@@ -810,8 +813,6 @@ void Scene::update( float dt )
 		forward *= 3;
 		leftRight *= 3;
 	}
-
-		//Ogre::WindowEventUtilities::messagePump();
 
 	Ogre::Vector3 dirX = mBodyTiltNode->_getDerivedOrientation()*Ogre::Vector3::UNIT_X;
 	Ogre::Vector3 dirZ = mBodyTiltNode->_getDerivedOrientation()*Ogre::Vector3::UNIT_Z;

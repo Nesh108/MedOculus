@@ -43,6 +43,8 @@ class Scene
 
 		bool loadLeap();
 		void initMarkersData();
+		void fetchData();
+		bool hasEnding (std::string const &fullString, std::string const &ending);
 
 	private:
 		Ogre::Root* mRoot;
@@ -58,7 +60,7 @@ class Scene
 		Ogre::SceneNode* mBodyTiltNode;
 
 		Ogre::SceneNode* mRoomNode;
-		Ogre::SceneNode* mARONodes[3];
+		Ogre::SceneNode* mARONodes[20];
 
 		Rift* mRift;
 };
