@@ -31,8 +31,6 @@ Here are some screenshots of the working prototype:
 ![MedOculus-hand](http://i.imgur.com/o2KjlGl.png =250x)
 ![MedOculus-skull](http://i.imgur.com/gdTLWby.png =250x)
 
-A demo video is available at the bottom of this page.
-
 ##Future Plans##
 **MedOculus** is created as a proof of concept to demonstrate the possibility of such a technology.
 Since this project was developed with usability in mind, the prototype is already fully functioning.
