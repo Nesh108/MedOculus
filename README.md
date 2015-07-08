@@ -43,4 +43,5 @@ Since this project was developed with usability in mind, the prototype is alread
 Thanks to (Germanunkol)[https://github.com/Germanunkol] and (Fakkoweb)[https://github.com/fakkoweb] for their great help and support!
 
 Also thanks to **Salesforce**, **Accenture**, **BeMyApp** and **Ahoy Berlin** for the event and the opportunity.
+
 Project created for the hackathon "Hack and Wear", Berlin 2015.
