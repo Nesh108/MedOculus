@@ -44,7 +44,7 @@ int closest_marker = -1;
 int selected_marker = -1;
 
 bool USE_LEAP = true;
-bool USE_ONLINE_DATA = false;
+bool USE_ONLINE_DATA = true;
 
 string SF_OAUTH_URL = "https://login.salesforce.com/services/oauth2/token";
 
@@ -239,8 +239,8 @@ void Scene::initMarkersData(){
 }
 
 void Scene::fetchData(){
-	// Fetching stuff
 
+	// Fetching stuff
 	CURLplusplus client;
 	string reply = client.Post(SF_OAUTH_URL, "grant_type=password&client_id=3MVG9WtWSKUDG.x5Afv4CDp.bVVOqjt.df.4kXzBCDYeWsO7YyvqziaSMZvxGCavNn72qTDg0XMqlQFfA0OEZ&client_secret=2734140549650017430&username=b.skirlo@gmail.com&password=medicmedic1YltZzsSvIJnxmWV9GDnE33sBO");
 	cout << "Curl Got OAth: " << reply << endl;
