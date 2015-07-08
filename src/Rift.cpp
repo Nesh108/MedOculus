@@ -98,10 +98,6 @@ Rift::Rift(int ID, Ogre::Root* root, Ogre::RenderWindow* renderWindow,
 		Sizei recommendedTex1Size = ovrHmd_GetFovTextureSize(hmd, ovrEye_Right,
 				hmd->DefaultEyeFov[1], 1.0f);
 
-		/*Sizei renderTargetSize;
-		 renderTargetSize.w = recommendedTex0Size.w + recommendedTex1Size.w;
-		 renderTargetSize.h = std::max( recommendedTex0Size.h, recommendedTex1Size.h );*/
-
 		// Generate a texture for each eye, as a rendertarget:
 		mLeftEyeRenderTexture =
 				Ogre::TextureManager::getSingleton().createManual(

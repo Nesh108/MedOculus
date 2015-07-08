@@ -8,11 +8,14 @@
 #include <errno.h>
 
 #include <curl/curl.h>
+#include <Private.h>	// contains passwords and private data
+
 #include "CURLplusplus.h"
 
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+
 #include <iostream>
 
 using namespace std;
@@ -242,7 +245,7 @@ void Scene::fetchData(){
 
 	// Fetching stuff
 	CURLplusplus client;
-	string reply = client.Post(SF_OAUTH_URL, "grant_type=password&client_id=3MVG9WtWSKUDG.x5Afv4CDp.bVVOqjt.df.4kXzBCDYeWsO7YyvqziaSMZvxGCavNn72qTDg0XMqlQFfA0OEZ&client_secret=2734140549650017430&username=b.skirlo@gmail.com&password=medicmedic1YltZzsSvIJnxmWV9GDnE33sBO");
+	string reply = client.Post(SF_OAUTH_URL, PASSWORD);
 	cout << "Curl Got OAth: " << reply << endl;
 
 	Document doc;
