@@ -560,6 +560,31 @@ void Rift::createVideoStreams() {
 				mTexture_left);
 }
 
+// TODO: Not working for some reason...
+int Rift::countCameras()
+{
+   /*cv::VideoCapture temp_camera;
+   int maxTested = 2;
+   for (int i = 0; i < maxTested; i++){
+	   try{
+		   cv::VideoCapture temp_camera(i);
+		   temp_camera.grab();
+		   temp_camera.release();
+		   temp_camera.~VideoCapture();
+		   std::cout << "Found camera #" << i << "." << std::endl;
+	   }catch(...){
+		   return i;
+	   }
+
+   }
+
+
+   return maxTested;
+   */
+
+	return cameraCount;
+}
+
 cv::Mat Rift::getImageUndLeft() {
 	return TheInputImageUnd_left;
 }
